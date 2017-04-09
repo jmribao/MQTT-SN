@@ -149,8 +149,14 @@ void ClientRecvTask::run(){
 
 		if(_network->getResponse(resp)){
 			Event* ev = new Event();
-			ClientNode* clnode = _res->getClientList()->getClient(resp->getClientAddress64(),
+			#ifdef ADDRESS_64
+				ClientNode* clnode = _res->getClientList()->getClient(resp->getClientAddress64(),
 					                                              resp->getClientAddress16());
+			#endif
+			#ifdef ADDRESS_128
+				ClientNode* clnode = _res->getClientList()->getClient(resp->getClientAddress128(),
+					                                              resp->getClientAddress16());
+			#endif
 
 			if(!clnode){
 				if(resp->getMsgType() == MQTTSN_TYPE_CONNECT){
@@ -163,7 +169,7 @@ void ClientRecvTask::run(){
 																	resp->getClientAddress16());
 				#endif
 				#ifdef NETWORK_UDP6
-					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress64(),
+					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress128(),
 																	resp->getClientAddress16());
 				#endif
 				#ifdef NETWORK_XXXXX

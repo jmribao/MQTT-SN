@@ -115,13 +115,24 @@ public:
 	Topics* getTopics();
 
 	TLSStack* getStack();
-	NWAddress64* getAddress64Ptr();
+	#ifdef ADDRESS_64
+		NWAddress64* getAddress64Ptr();
+	#endif
+	#ifdef ADDRESS_128
+		NWAddress128* getAddress128Ptr();
+	#endif
+
 	uint16_t  getAddress16();
 	string* getNodeId();
 	void setMsb(uint32_t);
 	void setLsb(uint32_t);
 	void setClientAddress16(uint16_t addr);
-	void setClientAddress64(NWAddress64* addr);
+	#ifdef ADDRESS_64
+		void setClientAddress64(NWAddress64* addr);
+	#endif
+	#ifdef ADDRESS_128
+		void setClientAddress128(NWAddress128* addr);
+	#endif
 	void setTopics(Topics* topics);
 	void setNodeId(string* id);
 	int  checkConnAck(MQTTSnConnack* msg);
@@ -155,7 +166,12 @@ private:
 
 	TLSStack* _stack;
 
-	NWAddress64 _address64;
+	#ifdef ADDRESS_64
+		NWAddress64 _address64;
+	#endif
+	#ifdef ADDRESS_128
+		NWAddress128 _address128;
+	#endif
     uint16_t _address16;
     string _nodeId;
     bool _connAckSaveFlg;
@@ -173,8 +189,14 @@ public:
 	~ClientList();
 	void authorize(const char* fileName, bool secure);
 	void erase(ClientNode*);
-	ClientNode* getClient(NWAddress64* addr64, uint16_t addr16);
-	ClientNode* createNode(bool secure, NWAddress64* addr64, uint16_t addr16, string* nodeId = 0);
+	#ifdef ADDRESS_64
+		ClientNode* getClient(NWAddress64* addr64, uint16_t addr16);
+		ClientNode* createNode(bool secure, NWAddress64* addr64, uint16_t addr16, string* nodeId = 0);
+	#endif
+	#ifdef ADDRESS_128
+		ClientNode* getClient(NWAddress128* addr128, uint16_t addr16);
+		ClientNode* createNode(bool secure, NWAddress128* addr128, uint16_t addr16, string* nodeId = 0);
+	#endif
 	uint16_t getClientCount();
 	ClientNode* operator[](int);
 	bool isAuthorized();

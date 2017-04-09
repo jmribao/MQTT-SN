@@ -65,17 +65,17 @@ using namespace std;
 
 namespace tomyGateway{
 /*============================================
-              NWAddress64
+              NWAddress128
  =============================================*/
-class NWAddress64 {
+class NWAddress128 {
 public:
-	NWAddress64(uint32_t msb, uint32_t lsb);
-	NWAddress64(void);
+	NWAddress128(uint32_t msb, uint32_t lsb);
+	NWAddress128(void);
 	uint32_t getMsb();
 	uint32_t getLsb();
 	void setMsb(uint32_t msb);
 	void setLsb(uint32_t lsb);
-	bool operator==(NWAddress64&);
+	bool operator==(NWAddress128&);
 private:
 	uint32_t _msb;
 	uint32_t _lsb;
@@ -96,14 +96,14 @@ public:
 	uint16_t getBodyLength();
 	uint8_t  getPayloadLength();
 	uint16_t getClientAddress16();
-	NWAddress64* getClientAddress64();
+	NWAddress128* getClientAddress128();
 
 	void setLength(uint16_t len);
   	void setMsgType(uint8_t type);
-	void setClientAddress64(uint32_t msb, uint32_t ipAddress);
+	void setClientAddress128(uint32_t msb, uint32_t ipAddress);
 	void setClientAddress16(uint16_t portNo);
 private:
-	NWAddress64 _addr64;
+	NWAddress128 _addr128;
 	uint16_t _addr16;
 	uint16_t _len;
 	uint8_t  _type;
@@ -147,7 +147,7 @@ public:
     Network();
     ~Network();
 
-    void unicast(NWAddress64* addr64, uint16_t addr16,	uint8_t* payload, uint16_t payloadLength);
+    void unicast(NWAddress128* addr128, uint16_t addr16,	uint8_t* payload, uint16_t payloadLength);
 	void broadcast(uint8_t* payload, uint16_t payloadLength);
 	bool getResponse(NWResponse* response);
     int  initialize(Udp6Config  config);

@@ -128,9 +128,14 @@ void ClientSendTask::run(){
 			MQTTSnMessage msg = MQTTSnMessage();
 			ClientNode* clnode = ev->getClientNode();
 			msg.absorb( clnode->getClientSendMessage() );
-
-			_network->unicast(clnode->getAddress64Ptr(), clnode->getAddress16(),
+			#ifdef ADDRESS_64
+				_network->unicast(clnode->getAddress64Ptr(), clnode->getAddress16(),
 					msg.getMessagePtr(), msg.getMessageLength());
+			#endif
+			#ifdef ADDRESS_128
+				_network->unicast(clnode->getAddress128Ptr(), clnode->getAddress16(),
+					msg.getMessagePtr(), msg.getMessageLength());
+			#endif
 		}else if(ev->getEventType() == EtBroadcast){
 			MQTTSnMessage msg = MQTTSnMessage();
 			msg.absorb( ev->getMqttSnMessage() );

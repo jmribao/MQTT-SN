@@ -70,8 +70,8 @@ Network::~Network(){
 
 }
 
-void Network::unicast(NWAddress64* addr64, uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
-	UDPPort::unicast(payload, payloadLength, addr64->getLsb(), addr16);
+void Network::unicast(NWAddress128* addr128, uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
+	UDPPort::unicast(payload, payloadLength, addr128->getLsb(), addr16);
 }
 
 void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
@@ -102,7 +102,7 @@ bool Network::getResponse(NWResponse* response){
 		response->setLength(msgLen);
 		response->setMsgType(msgType);
 		response->setClientAddress16(portNo);
-		response->setClientAddress64(0, ipAddress);
+		response->setClientAddress128(0, ipAddress);
 		return true;
 	}
 }
@@ -278,32 +278,32 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
 /*=========================================
              Class NLLongAddress
  =========================================*/
-NWAddress64::NWAddress64(){
+NWAddress128::NWAddress128(){
     _msb = _lsb = 0;
 }
 
-NWAddress64::NWAddress64(uint32_t msb, uint32_t lsb){
+NWAddress128::NWAddress128(uint32_t msb, uint32_t lsb){
     _msb = msb;
     _lsb = lsb;
 }
 
-uint32_t NWAddress64::getMsb(){
+uint32_t NWAddress128::getMsb(){
     return _msb;
 }
 
-uint32_t NWAddress64::getLsb(){
+uint32_t NWAddress128::getLsb(){
     return _lsb;
 }
 
-void NWAddress64::setMsb(uint32_t msb){
+void NWAddress128::setMsb(uint32_t msb){
     _msb = msb;
 }
 
-void NWAddress64::setLsb(uint32_t lsb){
+void NWAddress128::setLsb(uint32_t lsb){
     _lsb = lsb;
 }
 
-bool NWAddress64::operator==(NWAddress64& addr){
+bool NWAddress128::operator==(NWAddress128& addr){
 	if(_msb == addr.getMsb() && _lsb == addr.getLsb()){
 		return true;
 	}else{
@@ -327,17 +327,17 @@ void NWResponse::setLength(uint16_t len){
 	_len = len;
 }
 
-NWAddress64*  NWResponse::getClientAddress64(){
-    return &_addr64;
+NWAddress128*  NWResponse::getClientAddress128(){
+    return &_addr128;
 }
 
 uint16_t NWResponse::getClientAddress16(){
   return _addr16;
 }
 
-void  NWResponse::setClientAddress64(uint32_t msb, uint32_t lsb){
-    _addr64.setMsb(msb);
-    _addr64.setLsb(lsb);
+void  NWResponse::setClientAddress128(uint32_t msb, uint32_t lsb){
+    _addr128.setMsb(msb);
+    _addr128.setLsb(lsb);
 }
 
 void  NWResponse::setClientAddress16(uint16_t addr16){

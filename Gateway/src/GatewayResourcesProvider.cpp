@@ -113,7 +113,12 @@ ClientNode::ClientNode(bool secure){
 	_keepAliveMsec = 0;
 	_topics = new Topics();
 
-	_address64 = NWAddress64();
+	#ifdef ADDRESS_64
+		_address64 = NWAddress64();
+	#endif
+	#ifdef ADDRESS_128
+		_address128 = NWAddress128();
+	#endif
 	_nodeId = "";
 	_address16 = 0;
 
@@ -418,10 +423,16 @@ Topics* ClientNode::getTopics(){
 	return _topics;
 }
 
-
-NWAddress64* ClientNode::getAddress64Ptr(){
-	return &_address64;
-}
+#ifdef ADDRESS_64
+	NWAddress64* ClientNode::getAddress64Ptr(){
+		return &_address64;
+	}
+#endif
+#ifdef ADDRESS_128
+	NWAddress128* ClientNode::getAddress128Ptr(){
+		return &_address128;
+	}
+#endif
 
 uint16_t ClientNode::getAddress16(){
     return _address16;
@@ -432,17 +443,35 @@ string* ClientNode::getNodeId(){
 }
 
 void ClientNode::setMsb(uint32_t msb){
-    _address64.setMsb(msb);
+	#ifdef ADDRESS_64
+		_address64.setMsb(msb);
+	#endif
+	#ifdef ADDRESS_128
+		_address128.setMsb(msb);
+	#endif
 }
 
 void ClientNode::setLsb(uint32_t lsb){
-    _address64.setLsb(lsb);
+	#ifdef ADDRESS_64
+		_address64.setLsb(lsb);
+	#endif
+	#ifdef ADDRESS_128
+		_address128.setLsb(lsb);
+	#endif
 }
 
-void ClientNode::setClientAddress64(NWAddress64* addr){
-	 setMsb(addr->getMsb());
-	 setLsb(addr->getLsb());
-}
+#ifdef ADDRESS_64
+	void ClientNode::setClientAddress64(NWAddress64* addr){
+		 setMsb(addr->getMsb());
+		 setLsb(addr->getLsb());
+	}
+#endif
+#ifdef ADDRESS_128
+	void ClientNode::setClientAddress128(NWAddress128* addr){
+		 setMsb(addr->getMsb());
+		 setLsb(addr->getLsb());
+	}
+#endif
 
 void ClientNode::setClientAddress16(uint16_t addr){
     _address16 = addr;
@@ -499,10 +528,19 @@ void ClientList::authorize(const char* fname, bool secure){
 				strncpy(hex,addr.c_str(),8);
 				msb = strtoul(hex,0,16);
 				lsb = strtoul(addr.c_str() + 8,0,16);
-				NWAddress64 addr64 = NWAddress64(msb, lsb);
-
+				#ifdef ADDRESS_64
+					NWAddress64 addr64 = NWAddress64(msb, lsb);
+				#endif
+				#ifdef ADDRESS_128
+					NWAddress128 addr128 = NWAddress128(msb, lsb);
+				#endif
 				string id = data.substr(pos + 1);
-				createNode(secure, &addr64,0,&id);
+				#ifdef ADDRESS_64
+					createNode(secure, &addr64,0,&id);
+				#endif
+				#ifdef ADDRESS_128
+					createNode(secure, &addr128,0,&id);
+				#endif
 			}else{
 				LOGWRITE("Invalid address     %s\n",data.c_str());
 			}
@@ -513,19 +551,34 @@ void ClientList::authorize(const char* fname, bool secure){
 	}
 }
 
-ClientNode* ClientList::createNode(bool secure, NWAddress64* addr64, uint16_t addr16, string* nodeId){
+#ifdef ADDRESS_64
+	ClientNode* ClientList::createNode(bool secure, NWAddress64* addr64, uint16_t addr16, string* nodeId){
+#endif
+#ifdef ADDRESS_128
+	ClientNode* ClientList::createNode(bool secure, NWAddress128* addr128, uint16_t addr16, string* nodeId){
+#endif
 	if(_clientCnt < MAX_CLIENT_NODES && !_authorize){
 		_mutex.lock();
 		vector<ClientNode*>::iterator client = _clientVector->begin();
 		while( client != _clientVector->end()){
-			if(((*client)->getAddress64Ptr() == addr64) && ((*client)->getAddress16() == addr16)){
+			#ifdef ADDRESS_64
+				if(((*client)->getAddress64Ptr() == addr64) && ((*client)->getAddress16() == addr16)){
+			#endif
+			#ifdef ADDRESS_128
+				if(((*client)->getAddress128Ptr() == addr128) && ((*client)->getAddress16() == addr16)){
+			#endif
 				return 0;
 			}else{
 				++client;
 			}
 		}
 		ClientNode* node = new ClientNode(secure);
-		node->setClientAddress64(addr64);
+		#ifdef ADDRESS_64
+			node->setClientAddress64(addr64);
+		#endif
+		#ifdef ADDRESS_128
+			node->setClientAddress128(addr128);
+		#endif
 		node->setClientAddress16(addr16);
 		if (nodeId){
 			node->setNodeId(nodeId);
@@ -535,7 +588,12 @@ ClientNode* ClientList::createNode(bool secure, NWAddress64* addr64, uint16_t ad
 		_mutex.unlock();
 		return node;
 	}else{
-		return getClient(addr64, addr16);
+		#ifdef ADDRESS_64
+			return getClient(addr64, addr16);
+		#endif
+		#ifdef ADDRESS_128
+			return getClient(addr128, addr16);
+		#endif
 	}
 }
 
@@ -562,12 +620,23 @@ void ClientList::erase(ClientNode* clnode){
 	_mutex.unlock();
 }
 
-ClientNode* ClientList::getClient(NWAddress64* addr64, uint16_t addr16){
+#ifdef ADDRESS_64
+	ClientNode* ClientList::getClient(NWAddress64* addr64, uint16_t addr16){
+#endif
+#ifdef ADDRESS_128
+	ClientNode* ClientList::getClient(NWAddress128* addr128, uint16_t addr16){
+#endif
 	_mutex.lock();
 	vector<ClientNode*>::iterator client = _clientVector->begin();
 	while( (client != _clientVector->end()) && *client){
-			if(*((*client)->getAddress64Ptr()) == *addr64 &&
+			#ifdef ADDRESS_64
+				if(*((*client)->getAddress64Ptr()) == *addr64 &&
 					(*client)->getAddress16() == addr16){
+			#endif
+			#ifdef ADDRESS_128
+				if(*((*client)->getAddress128Ptr()) == *addr128 &&
+					(*client)->getAddress16() == addr16){
+			#endif
 				_mutex.unlock();
 				return *client;
 			}else{
