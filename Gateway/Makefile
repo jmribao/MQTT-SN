@@ -15,12 +15,13 @@ $(SUBDIR)/TCPStack.cpp \
 $(SUBDIR)/TLSStack.cpp \
 $(SUBDIR)/Topics.cpp \
 $(SUBDIR)/UDPStack.cpp \
+$(SUBDIR)/UDP6Stack.cpp \
 $(SUBDIR)/XXXXXStack.cpp \
 $(SUBDIR)/ZBStack.cpp 
 
 CXX := g++
 CPPFLAGS += 
-DEFS :=
+DEFS :=-DNETWORK_UDP6
 LDFLAGS += 
 LIBS +=
 #LDADD := -lpthread -lrt -lssl -lcrypto
