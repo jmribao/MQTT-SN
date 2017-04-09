@@ -107,7 +107,7 @@ bool Network::getResponse(NWResponse* response){
 	}
 }
 
-int Network::initialize(UdpConfig  config){
+int Network::initialize(Udp6Config  config){
 	return UDPPort::open(config);
 }
 
@@ -140,7 +140,7 @@ void UDPPort::close(){
 	}
 }
 
-int UDPPort::open(UdpConfig config){
+int UDPPort::open(Udp6Config config){
 	char loopch = 0;
 	const int reuse = 1;
 

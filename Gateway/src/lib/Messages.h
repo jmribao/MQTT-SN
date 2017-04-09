@@ -161,6 +161,7 @@
 
 #include "ZBStack.h"
 #include "UDPStack.h"
+#include "UDP6Stack.h"
 #include "ProcessFramework.h"
 #include <string>
 

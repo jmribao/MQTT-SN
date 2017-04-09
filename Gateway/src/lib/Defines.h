@@ -1,5 +1,5 @@
 /*
- *   Defines.h
+ç *   Defines.h
  *                      The BSD License
  *
  *           Copyright (c) 2014, tomoaki@tomy-tech.com
@@ -38,13 +38,17 @@
  *    Network  Selection
  =================================*/
 
-#if ! defined(NETWORK_UDP) && ! defined (NETWORK_XXXXX)
+#if ! defined(NETWORK_UDP) && ! defined(NETWORK_UDP6) && ! defined (NETWORK_XXXXX)
 #define NETWORK_XBEE
 #define GATEWAY_NETWORK  "Network is XBee."
 #endif
 
 #ifdef NETWORK_UDP
 #define GATEWAY_NETWORK  "Network is UDP."
+#endif
+
+#ifdef NETWORK_UDP6
+#define GATEWAY_NETWORK  "Network is UDP6."
 #endif
 
 #ifdef NETWORK_XXXXX
@@ -91,6 +95,12 @@ typedef struct {
 }UdpConfig;
 
 typedef struct {
+	char* ipAddress;
+	uint16_t gPortNo;
+	uint16_t uPortNo;
+}Udp6Config;
+
+typedef struct {
 	uint8_t  param1;
 	uint16_t param2;
 	uint16_t param3;
@@ -102,6 +112,10 @@ typedef struct {
 
 #ifdef NETWORK_UDP
 #define NETWORK_CONFIG UdpConfig
+#endif
+
+#ifdef NETWORK_UDP6
+#define NETWORK_CONFIG Udp6Config
 #endif
 
 #ifdef NETWORK_XXXXX

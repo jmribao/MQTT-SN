@@ -111,6 +111,11 @@ void ClientSendTask::run(){
 
 #endif
 
+#ifdef NETWORK_UDP6
+	_network = _res->getNetwork();
+
+#endif
+
 #ifdef NETWORK_XXXXX
 	_network = _res->getNetwork();
 #endif

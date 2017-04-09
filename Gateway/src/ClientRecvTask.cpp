@@ -122,6 +122,19 @@ void ClientRecvTask::run(){
 	_network = _res->getNetwork();
 #endif
 
+#ifdef NETWORK_UDP6
+	if(_res->getParam("BroadcastIP", param) == 0){
+		config.ipAddress = strdup(param);
+	}
+	if(_res->getParam("BroadcastPortNo",param) == 0){
+		config.gPortNo = atoi(param);
+	}
+	if(_res->getParam("GatewayPortNo",param) == 0){
+		config.uPortNo = atoi(param);
+	}
+	_network = _res->getNetwork();
+#endif
+
 #ifdef NETWORK_XXXXX
 	_network = _res->getNetwork();
 #endif
@@ -146,6 +159,10 @@ void ClientRecvTask::run(){
 					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress64(),0);
 				#endif
 				#ifdef NETWORK_UDP
+					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress64(),
+																	resp->getClientAddress16());
+				#endif
+				#ifdef NETWORK_UDP6
 					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress64(),
 																	resp->getClientAddress16());
 				#endif
