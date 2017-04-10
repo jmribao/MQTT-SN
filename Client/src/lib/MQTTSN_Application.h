@@ -52,9 +52,9 @@
 
 
 /*-------- Select Network  -------------*/
-#define NETWORK_XBEE
+//#define NETWORK_XBEE
 //#define NETWORK_UDP
-
+#define NETWORK_UDP6
 
 /*--- XBee Buffer Flow Control --*/
 #ifdef NETWORK_XBEE
@@ -78,7 +78,7 @@
 	#ifdef NETWORK_XBEE
 		#define MQTTSN_MAX_FRAME_SIZE           70
 	#else
-		#ifdef NETWORK_UDP
+		#if defined(NETWORK_UDP) || defined(NETWORK_UDP6)
 			#define MQTTSN_MAX_FRAME_SIZE     1024
 		#endif
 	#endif
@@ -136,6 +136,19 @@ typedef struct {
 	MqttsnConfig mqttsnCfg;
 }UdpAppConfig;
 
+typedef struct {
+	uint8_t  ipAddress[16];
+	uint16_t gPortNo;
+	uint8_t  ipLocal[16];
+	uint16_t uPortNo;
+	uint8_t  macAddr[6];
+}Udp6Config;
+
+typedef struct {
+	Udp6Config netCfg;
+	MqttsnConfig mqttsnCfg;
+}Udp6AppConfig;
+
 /*======================================
       MACROs for Application
 =======================================*/
@@ -149,6 +162,12 @@ typedef struct {
     #define UDP_APP_CONFIG        UdpAppConfig   theAppConfig
 	#define APP_CONFIG            UdpAppConfig
 	#define NETWORK_CONFIG        UdpConfig
+#endif
+
+#ifdef NETWORK_UDP6
+    #define UDP_APP_CONFIG        Udp6AppConfig   theAppConfig
+	#define APP_CONFIG            Udp6AppConfig
+	#define NETWORK_CONFIG        Udp6Config
 #endif
 
 #define TASK_LIST         TaskList theTaskList[]

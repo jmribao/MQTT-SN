@@ -70,6 +70,9 @@ enum SendReqType{
 	#endif
 #endif
 
+#ifdef NETWORK_UDP6
+	#include "udp6Stack.h"
+#endif
 
 namespace tomyClient {
 /***********************************

@@ -63,6 +63,9 @@ XBeeAppConfig  theAppConfig = { { 0, 0, 0 },{ 0, 0, false, false, 0, 0 } };
 UdpAppConfig   theAppConfig = {{ {0,0,0,0}, 0, {0,0,0,0}, 0, {0,0,0,0,0,0} },{ 0, 0, false, false, 0, 0 } };
 #endif
 
+#ifdef NETWORK_UDP6
+Udp6AppConfig  theAppConfig = {{ {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, 0, {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0}, 0, {0,0,0,0,0,0} },{ 0, 0, false, false, 0, 0 } };
+#endif
 
 /*========================================
 		main function
