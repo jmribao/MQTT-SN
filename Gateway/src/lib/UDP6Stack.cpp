@@ -144,108 +144,124 @@ void UDPPort::close(){
 }
 
 int UDPPort::open(Udp6Config config){
-	/*
+
 	char loopch = 0;
 	const int reuse = 1;
+	const int only6 = 1;
 
 	if(config.uPortNo == 0 || config.gPortNo == 0){
 		return -1;
 	}
 	_gPortNo = htons(config.gPortNo);
-	_gIpAddr = inet_addr(config.ipAddress);
 
-	/*------ Create unicast socket --------*
-	_sockfdUnicast = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if(inet_pton(AF_INET6, config.ipAddress, _gIpAddr) != 1) {
+	      D_NWSTACK("error bad IP MULTICAST\n");
+	      return -1;
+	}
+
+	/*------ Create unicast socket --------*/
+	_sockfdUnicast = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdUnicast < 0){
+		return -1;
+	}
+
+	if(setsockopt(_sockfdUnicast, IPPROTO_IPV6, IPV6_V6ONLY, &only6, sizeof(only6))) {
 		return -1;
 	}
 
 	setsockopt(_sockfdUnicast, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-	sockaddr_in addru;
-	addru.sin_family = AF_INET;
-	addru.sin_port = htons(config.uPortNo);
-	addru.sin_addr.s_addr = INADDR_ANY;
+	sockaddr_in6 addru;
+	memset(&addru, 0, sizeof(addru));
+	addru.sin6_family = AF_INET6;
+	addru.sin6_port = htons(config.uPortNo);
+	addru.sin6_addr   = in6addr_any;
 
 	if( ::bind ( _sockfdUnicast, (sockaddr*)&addru,  sizeof(addru)) <0){
 		return -1;
 	}
-	if(setsockopt(_sockfdUnicast, IPPROTO_IP, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
-		D_NWSTACK("error IP_MULTICAST_LOOP in UDPPort::open\n");
+
+	if(setsockopt(_sockfdUnicast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+		D_NWSTACK("error IPV6_MULTICAST_LOOP in UDPPort::open\n");
 		close();
 		return -1;
 	}
 
-	/*------ Create Multicast socket --------*
-	_sockfdMulticast = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	/*------ Create Multicast socket --------*/
+	_sockfdMulticast = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdMulticast < 0){
 		close();
 		return -1;
 	}
 
+	if(setsockopt(_sockfdMulticast, IPPROTO_IPV6, IPV6_V6ONLY, &only6, sizeof(only6))) {
+		return -1;
+	}
+
 	setsockopt(_sockfdMulticast, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-	sockaddr_in addrm;
-	addrm.sin_family = AF_INET;
-	addrm.sin_port = _gPortNo;
-	addrm.sin_addr.s_addr = INADDR_ANY;
+	sockaddr_in6 addrm;
+	memset(&addrm, 0, sizeof(addru));
+	addrm.sin6_family = AF_INET6;
+	addrm.sin6_port = _gPortNo;
+	addrm.sin6_addr   = in6addr_any;
 
 	if( ::bind ( _sockfdMulticast, (sockaddr*)&addrm,  sizeof(addrm)) <0){
 		return -1;
 	}
-	if(setsockopt(_sockfdMulticast, IPPROTO_IP, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
-		D_NWSTACK("error IP_MULTICAST_LOOP in UDPPort::open\n");
+	if(setsockopt(_sockfdMulticast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+		D_NWSTACK("error IPV6_MULTICAST_LOOP in UDPPort::open\n");
 		close();
 		return -1;
 	}
 
-	ip_mreq mreq;
-	mreq.imr_interface.s_addr = INADDR_ANY;
-	mreq.imr_multiaddr.s_addr = _gIpAddr;
+	ipv6_mreq mreq;
 
-	if( setsockopt(_sockfdMulticast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))< 0){
-		D_NWSTACK("error Multicast IP_ADD_MEMBERSHIP in UDPPort::open\n");
+	/* Accept multicast from any interface */
+	mreq.ipv6mr_interface = 0;
+
+	/* Specify the multicast group */
+	memcpy(&mreq.ipv6mr_multiaddr,
+		   _gIpAddr,
+		   sizeof(mreq.ipv6mr_multiaddr));
+
+	if( setsockopt(_sockfdMulticast, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq, sizeof(mreq))< 0){
+		D_NWSTACK("error Multicast IPV6_ADD_MEMBERSHIP in UDPPort::open\n");
 		perror("multicast");
 		close();
 		return -1;
 	}
 
-	if( setsockopt(_sockfdUnicast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))< 0){
-		D_NWSTACK("error Unicast IP_ADD_MEMBERSHIP in UDPPort::open\n");
+	if( setsockopt(_sockfdUnicast, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq, sizeof(mreq))< 0){
+		D_NWSTACK("error Unicast IPV6_ADD_MEMBERSHIP in UDPPort::open\n");
 		close();
 		return -1;
 	}
-	*/
 	return 0;
 }
 
 
 int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
-	/*
-	sockaddr_in dest;
-	dest.sin_family = AF_INET;
-	dest.sin_port = port;
-	dest.sin_addr.s_addr = ipAddress;
+	sockaddr_in6 dest;
+	dest.sin6_family = AF_INET6;
+	dest.sin6_port = port;
+	memcpy(&dest.sin6_addr,
+			   ipaddress,
+               sizeof(dest.sin6_addr));
 
 	int status = ::sendto( _sockfdUnicast, buf, length, 0, (const sockaddr*)&dest, sizeof(dest) );
 	if( status < 0){
-		D_NWSTACK("errno == %d in UDPPort::sendto\n", errno);
+		D_NWSTACK("errno == %d in UDP6Port::sendto\n", errno);
 	}
 	D_NWSTACK("sendto %s:%u length = %d\n",inet_ntoa(dest.sin_addr), htons(port), status);
 	return status;
-	*/
-	return 0;
 }
 
 int UDPPort::multicast( const uint8_t* buf, uint32_t length ){
-	/*
 	return unicast(buf, length,_gIpAddr, _gPortNo);
-	*/
-	return 0;
 }
 
 int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* portPtr){
-	/*
 	fd_set recvfds;
 	int maxSock = 0;
 
@@ -262,32 +278,36 @@ int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* p
 	select(maxSock + 1, &recvfds, 0, 0, 0);
 
 	if(FD_ISSET(_sockfdUnicast, &recvfds)){
-		return recvfrom (_sockfdUnicast,buf, len, 0,ipAddressPtr, portPtr );
+		return recvfrom (_sockfdUnicast,buf, len, 0,ipaddress, portPtr );
 	}else if(FD_ISSET(_sockfdMulticast, &recvfds)){
-		return recvfrom (_sockfdMulticast,buf, len, 0,ipAddressPtr, portPtr );
+		return recvfrom (_sockfdMulticast,buf, len, 0,ipaddress, portPtr );
 	}
-	*/
 	return 0;
 }
 
 int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint8_t ipaddress[16], uint16_t* portPtr ){
-	/*
-	sockaddr_in sender;
+	sockaddr_in6 sender;
 	socklen_t addrlen = sizeof(sender);
 	memset(&sender, 0, addrlen);
 
 	int status = ::recvfrom( sockfd, buf, len, flags, (sockaddr*)&sender, &addrlen );
 
 	if ( status < 0 && errno != EAGAIN )	{
-		D_NWSTACK("errno == %d in UDPPort::recvfrom\n", errno);
+		D_NWSTACK("errno == %d in UDP6Port::recvfrom\n", errno);
 		return -1;
 	}
-	*ipAddressPtr = (uint32_t)sender.sin_addr.s_addr;
-	*portPtr = (uint16_t)sender.sin_port;
-	D_NWSTACK("recved from %s:%d length = %d\n",inet_ntoa(sender.sin_addr),htons(*portPtr),status);
+
+	memcpy(ipaddress,
+               &sender.sin6_addr,
+               sizeof(sender.sin6_addr));
+	*portPtr = (uint16_t)sender.sin6_port;
+
+	char straddr[INET6_ADDRSTRLEN];
+
+	D_NWSTACK("recved from %s:%d length = %d\n",
+		  inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
+		  htons(*portPtr),status);
 	return status;
-	*/
-	return 0;
 }
 
 
