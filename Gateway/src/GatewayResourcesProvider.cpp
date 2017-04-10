@@ -442,34 +442,31 @@ string* ClientNode::getNodeId(){
     return &_nodeId;
 }
 
-void ClientNode::setMsb(uint32_t msb){
-	#ifdef ADDRESS_64
+#ifdef ADDRESS_64
+	void ClientNode::setMsb(uint32_t msb){
 		_address64.setMsb(msb);
-	#endif
-	#ifdef ADDRESS_128
-		_address128.setMsb(msb);
-	#endif
-}
+	}
 
-void ClientNode::setLsb(uint32_t lsb){
-	#ifdef ADDRESS_64
+	void ClientNode::setLsb(uint32_t lsb){
 		_address64.setLsb(lsb);
-	#endif
-	#ifdef ADDRESS_128
-		_address128.setLsb(lsb);
-	#endif
-}
+	}
+#endif
+#ifdef ADDRESS_128
+	void ClientNode::setAddress(uint8_t address[16]){
+		_address128.setAddress(address);
+	}
+#endif
 
 #ifdef ADDRESS_64
 	void ClientNode::setClientAddress64(NWAddress64* addr){
-		 setMsb(addr->getMsb());
-		 setLsb(addr->getLsb());
+		setMsb(addr->getMsb());
+		setLsb(addr->getLsb());
 	}
 #endif
 #ifdef ADDRESS_128
 	void ClientNode::setClientAddress128(NWAddress128* addr){
-		 setMsb(addr->getMsb());
-		 setLsb(addr->getLsb());
+		uint8_t address[16];
+		setAddress(addr->getAddress(address));
 	}
 #endif
 
@@ -493,7 +490,9 @@ ClientList::ClientList(){
 	_clientVector = new vector<ClientNode*>();
 	_clientVector->reserve(MAX_CLIENT_NODES);
 	_clientCnt = 0;
-	_authorize = false;
+	#ifdef ADDRESS_64
+		_authorize = false;
+	#endif
 }
 
 ClientList::~ClientList(){
@@ -506,58 +505,51 @@ ClientList::~ClientList(){
 	_mutex.unlock();
 }
 
-void ClientList::authorize(const char* fname, bool secure){
-	FILE* fp;
-	char buf[258];
-	size_t pos;
+#ifdef ADDRESS_64
+	void ClientList::authorize(const char* fname, bool secure){
+		FILE* fp;
+		char buf[258];
+		size_t pos;
 
-	if((fp = fopen(fname, "r")) != 0){
-		while(fgets(buf, 256, fp) != 0){
-			string data = string(buf);
-			while((pos = data.find_first_of(" 　\t\n")) != string::npos){
-				data.erase(pos, 1);
-			}
-			if(data.empty()){
-				continue;
-			}
-			pos = data.find_first_of(",");
-			string addr = data.substr(0,pos);
-			if(addr.size() == 16){
-				unsigned long msb, lsb;
-				char hex[9];
-				strncpy(hex,addr.c_str(),8);
-				msb = strtoul(hex,0,16);
-				lsb = strtoul(addr.c_str() + 8,0,16);
-				#ifdef ADDRESS_64
+		if((fp = fopen(fname, "r")) != 0){
+			while(fgets(buf, 256, fp) != 0){
+				string data = string(buf);
+				while((pos = data.find_first_of(" 　\t\n")) != string::npos){
+					data.erase(pos, 1);
+				}
+				if(data.empty()){
+					continue;
+				}
+				pos = data.find_first_of(",");
+				string addr = data.substr(0,pos);
+				if(addr.size() == 16){
+					unsigned long msb, lsb;
+					char hex[9];
+					strncpy(hex,addr.c_str(),8);
+					msb = strtoul(hex,0,16);
+					lsb = strtoul(addr.c_str() + 8,0,16);
 					NWAddress64 addr64 = NWAddress64(msb, lsb);
-				#endif
-				#ifdef ADDRESS_128
-					NWAddress128 addr128 = NWAddress128(msb, lsb);
-				#endif
-				string id = data.substr(pos + 1);
-				#ifdef ADDRESS_64
+					string id = data.substr(pos + 1);
 					createNode(secure, &addr64,0,&id);
-				#endif
-				#ifdef ADDRESS_128
-					createNode(secure, &addr128,0,&id);
-				#endif
-			}else{
-				LOGWRITE("Invalid address     %s\n",data.c_str());
+				}else{
+					LOGWRITE("Invalid address     %s\n",data.c_str());
+				}
 			}
+			fclose(fp);
+			_authorize = true;
+			LOGWRITE("Clients are authorized.\n");
 		}
-		fclose(fp);
-		_authorize = true;
-		LOGWRITE("Clients are authorized.\n");
 	}
-}
+#endif
 
 #ifdef ADDRESS_64
 	ClientNode* ClientList::createNode(bool secure, NWAddress64* addr64, uint16_t addr16, string* nodeId){
+		if(_clientCnt < MAX_CLIENT_NODES && !_authorize){
 #endif
 #ifdef ADDRESS_128
 	ClientNode* ClientList::createNode(bool secure, NWAddress128* addr128, uint16_t addr16, string* nodeId){
+		if(_clientCnt < MAX_CLIENT_NODES){
 #endif
-	if(_clientCnt < MAX_CLIENT_NODES && !_authorize){
 		_mutex.lock();
 		vector<ClientNode*>::iterator client = _clientVector->begin();
 		while( client != _clientVector->end()){
@@ -658,9 +650,11 @@ ClientNode* ClientList::operator[](int pos){
 	return node;
 }
 
-bool ClientList::isAuthorized(){
-	return _authorize;
-}
+#ifdef ADDRESS_64
+	bool ClientList::isAuthorized(){
+		return _authorize;
+	}
+#endif
 
 /*=====================================
         Class Event

@@ -49,6 +49,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <termios.h>
+#include <string.h>
 #include "ProcessFramework.h"
 #include "UDP6Stack.h"
 
@@ -71,7 +72,8 @@ Network::~Network(){
 }
 
 void Network::unicast(NWAddress128* addr128, uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
-	UDPPort::unicast(payload, payloadLength, addr128->getLsb(), addr16);
+	uint8_t ipAddress[16];
+	UDPPort::unicast(payload, payloadLength, addr128->getAddress(ipAddress), addr16);
 }
 
 void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
@@ -79,13 +81,14 @@ void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
 }
 
 bool Network::getResponse(NWResponse* response){
-	uint32_t ipAddress = 0;
+	uint8_t ipAddress[16];
 	uint16_t portNo = 0;
 	uint16_t msgLen;
 	uint8_t  msgType;
 
 	uint8_t* buf = response->getPayloadPtr();
-	uint16_t recvLen = UDPPort::recv(buf, MQTTSN_MAX_FRAME_SIZE, &ipAddress, &portNo);
+	memset(ipAddress, 0, 16*sizeof(uint8_t));
+	uint16_t recvLen = UDPPort::recv(buf, MQTTSN_MAX_FRAME_SIZE, ipAddress, &portNo);
 	if(recvLen < 0){
 		return false;
 	}else{
@@ -102,7 +105,7 @@ bool Network::getResponse(NWResponse* response){
 		response->setLength(msgLen);
 		response->setMsgType(msgType);
 		response->setClientAddress16(portNo);
-		response->setClientAddress128(0, ipAddress);
+		response->setClientAddress128(ipAddress);
 		return true;
 	}
 }
@@ -121,7 +124,7 @@ UDPPort::UDPPort(){
     _sockfdUnicast = -1;
     _sockfdMulticast = -1;
 	_gPortNo = 0;
-	_gIpAddr = 0;
+	memset(_gIpAddr, 0, 16*sizeof(uint8_t));
 
 }
 
@@ -141,6 +144,7 @@ void UDPPort::close(){
 }
 
 int UDPPort::open(Udp6Config config){
+	/*
 	char loopch = 0;
 	const int reuse = 1;
 
@@ -150,7 +154,7 @@ int UDPPort::open(Udp6Config config){
 	_gPortNo = htons(config.gPortNo);
 	_gIpAddr = inet_addr(config.ipAddress);
 
-	/*------ Create unicast socket --------*/
+	/*------ Create unicast socket --------*
 	_sockfdUnicast = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdUnicast < 0){
 		return -1;
@@ -172,7 +176,7 @@ int UDPPort::open(Udp6Config config){
 		return -1;
 	}
 
-	/*------ Create Multicast socket --------*/
+	/*------ Create Multicast socket --------*
 	_sockfdMulticast = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdMulticast < 0){
 		close();
@@ -211,11 +215,13 @@ int UDPPort::open(Udp6Config config){
 		close();
 		return -1;
 	}
+	*/
 	return 0;
 }
 
 
-int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint32_t ipAddress, uint16_t port  ){
+int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
+	/*
 	sockaddr_in dest;
 	dest.sin_family = AF_INET;
 	dest.sin_port = port;
@@ -227,13 +233,19 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint32_t ipAddress, ui
 	}
 	D_NWSTACK("sendto %s:%u length = %d\n",inet_ntoa(dest.sin_addr), htons(port), status);
 	return status;
+	*/
+	return 0;
 }
 
 int UDPPort::multicast( const uint8_t* buf, uint32_t length ){
+	/*
 	return unicast(buf, length,_gIpAddr, _gPortNo);
+	*/
+	return 0;
 }
 
-int UDPPort::recv(uint8_t* buf, uint16_t len, uint32_t* ipAddressPtr, uint16_t* portPtr){
+int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* portPtr){
+	/*
 	fd_set recvfds;
 	int maxSock = 0;
 
@@ -254,10 +266,12 @@ int UDPPort::recv(uint8_t* buf, uint16_t len, uint32_t* ipAddressPtr, uint16_t* 
 	}else if(FD_ISSET(_sockfdMulticast, &recvfds)){
 		return recvfrom (_sockfdMulticast,buf, len, 0,ipAddressPtr, portPtr );
 	}
+	*/
 	return 0;
 }
 
-int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint32_t* ipAddressPtr, uint16_t* portPtr ){
+int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint8_t ipaddress[16], uint16_t* portPtr ){
+	/*
 	sockaddr_in sender;
 	socklen_t addrlen = sizeof(sender);
 	memset(&sender, 0, addrlen);
@@ -272,6 +286,8 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
 	*portPtr = (uint16_t)sender.sin_port;
 	D_NWSTACK("recved from %s:%d length = %d\n",inet_ntoa(sender.sin_addr),htons(*portPtr),status);
 	return status;
+	*/
+	return 0;
 }
 
 
@@ -279,40 +295,27 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
              Class NLLongAddress
  =========================================*/
 NWAddress128::NWAddress128(){
-    _msb = _lsb = 0;
+	memset(_address, 0, 16*sizeof(uint8_t));
 }
 
-NWAddress128::NWAddress128(uint32_t msb, uint32_t lsb){
-    _msb = msb;
-    _lsb = lsb;
+NWAddress128::NWAddress128(uint8_t address[16]){
+	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
-uint32_t NWAddress128::getMsb(){
-    return _msb;
+uint8_t* NWAddress128::getAddress(uint8_t address[16]){
+    return (uint8_t*)memcpy(address, _address, 16*sizeof(uint8_t));
 }
 
-uint32_t NWAddress128::getLsb(){
-    return _lsb;
-}
-
-void NWAddress128::setMsb(uint32_t msb){
-    _msb = msb;
-}
-
-void NWAddress128::setLsb(uint32_t lsb){
-    _lsb = lsb;
+void NWAddress128::setAddress(uint8_t address[16]){
+	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
 bool NWAddress128::operator==(NWAddress128& addr){
-	if(_msb == addr.getMsb() && _lsb == addr.getLsb()){
-		return true;
-	}else{
-		return false;
-	}
+	return memcmp(_address, addr._address, 16*sizeof(uint8_t))==0;
 }
 
 /*=========================================
-             Class ZBResponse
+             Class NWResponse
  =========================================*/
 NWResponse::NWResponse(){
     _addr16 = 0;
@@ -335,9 +338,8 @@ uint16_t NWResponse::getClientAddress16(){
   return _addr16;
 }
 
-void  NWResponse::setClientAddress128(uint32_t msb, uint32_t lsb){
-    _addr128.setMsb(msb);
-    _addr128.setLsb(lsb);
+void  NWResponse::setClientAddress128(uint8_t address[16]){
+    _addr128.setAddress(address);
 }
 
 void  NWResponse::setClientAddress16(uint16_t addr16){

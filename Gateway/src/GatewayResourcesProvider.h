@@ -124,8 +124,13 @@ public:
 
 	uint16_t  getAddress16();
 	string* getNodeId();
-	void setMsb(uint32_t);
-	void setLsb(uint32_t);
+	#ifdef ADDRESS_64
+		void setMsb(uint32_t);
+		void setLsb(uint32_t);
+	#endif
+	#ifdef ADDRESS_128
+		void setAddress(uint8_t address[16]);
+	#endif
 	void setClientAddress16(uint16_t addr);
 	#ifdef ADDRESS_64
 		void setClientAddress64(NWAddress64* addr);
@@ -187,7 +192,9 @@ class ClientList{
 public:
 	ClientList();
 	~ClientList();
-	void authorize(const char* fileName, bool secure);
+	#ifdef ADDRESS_64
+		void authorize(const char* fileName, bool secure);
+	#endif
 	void erase(ClientNode*);
 	#ifdef ADDRESS_64
 		ClientNode* getClient(NWAddress64* addr64, uint16_t addr16);
@@ -199,12 +206,16 @@ public:
 	#endif
 	uint16_t getClientCount();
 	ClientNode* operator[](int);
-	bool isAuthorized();
+	#ifdef ADDRESS_64
+		bool isAuthorized();
+	#endif
 private:
 	vector<ClientNode*>*  _clientVector;
 	Mutex _mutex;
 	uint16_t _clientCnt;
-	bool _authorize;
+	#ifdef ADDRESS_64
+		bool _authorize;
+	#endif
 };
 
 /*=====================================

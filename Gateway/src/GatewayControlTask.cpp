@@ -608,9 +608,11 @@ void GatewayControlTask::handleSnConnect(Event* ev, ClientNode* clnode, MQTTSnMe
 	MQTTSnConnect* sConnect = new MQTTSnConnect();
 	sConnect->absorb(msg);
 
-	if (!_res->getClientList()->isAuthorized()){
-		clnode->setNodeId(sConnect->getClientId());
-	}
+	#ifdef ADDRESS_64
+		if (!_res->getClientList()->isAuthorized()){
+			clnode->setNodeId(sConnect->getClientId());
+		}
+	#endif
 
 	if(clnode->isConnectSendable()){
 		mqMsg = new MQTTConnect();

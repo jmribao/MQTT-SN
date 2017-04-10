@@ -69,17 +69,14 @@ namespace tomyGateway{
  =============================================*/
 class NWAddress128 {
 public:
-	NWAddress128(uint32_t msb, uint32_t lsb);
+	NWAddress128(uint8_t address[16]);
 	NWAddress128(void);
-	uint32_t getMsb();
-	uint32_t getLsb();
-	void setMsb(uint32_t msb);
-	void setLsb(uint32_t lsb);
+	uint8_t* getAddress(uint8_t address[16]);
+	void setAddress(uint8_t address[16]);
 	bool operator==(NWAddress128&);
 private:
-	uint32_t _msb;
-	uint32_t _lsb;
-};
+	uint8_t _address[16];
+} __attribute__((__packed__));
 
 /*============================================
                NWResponse
@@ -100,7 +97,7 @@ public:
 
 	void setLength(uint16_t len);
   	void setMsgType(uint8_t type);
-	void setClientAddress128(uint32_t msb, uint32_t ipAddress);
+	void setClientAddress128(uint8_t address[16]);
 	void setClientAddress16(uint16_t portNo);
 private:
 	NWAddress128 _addr128;
@@ -121,20 +118,20 @@ public:
 
 	int open(Udp6Config config);
 
-	int unicast(const uint8_t* buf, uint32_t length, uint32_t ipaddress, uint16_t port  );
+	int unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  );
 	int multicast( const uint8_t* buf, uint32_t length );
-	int recv(uint8_t* buf, uint16_t len, uint32_t* ipaddress, uint16_t* port );
+	int recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* port );
 
 private:
 	void close();
 	void setNonBlocking( const bool );
-	int recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint32_t* ipaddress, uint16_t* port );
+	int recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint8_t ipaddress[16], uint16_t* port );
 
 	int _sockfdUnicast;
 	int _sockfdMulticast;
 
 	uint16_t _gPortNo;
-	uint32_t _gIpAddr;
+	uint8_t _gIpAddr[16];
 	bool    _disconReq;
 
 };
