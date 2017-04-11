@@ -122,7 +122,7 @@ void MqttsnClientApplication::initialize(int argc, char** argv){
 	unsigned int br = B57600;
 	char* dev = 0;
 #endif
-#ifdef NETWORK_UDP
+#if defined(NETWORK_UDP) || defined(NETWORK_UDP6)
 	char* ipAddr = 0;
 	uint16_t gPortNo = 0;
 	uint16_t uPortNo = 0;
@@ -190,7 +190,7 @@ void MqttsnClientApplication::initialize(int argc, char** argv){
 			}
 			break;
 #endif
-#ifdef NETWORK_UDP
+#if defined(NETWORK_UDP) || defined(NETWORK_UDP6)
 		case 'g':
 			ipAddr = optarg;
 			break;
@@ -226,6 +226,17 @@ void MqttsnClientApplication::initialize(int argc, char** argv){
 		theAppConfig.netCfg.ipAddress[1] = (ipaddr & 0x00ff0000) >> 16;
 		theAppConfig.netCfg.ipAddress[2] = (ipaddr & 0x0000ff00) >> 8;
 		theAppConfig.netCfg.ipAddress[3] = (ipaddr & 0x000000ff);
+	}else{
+		printf("argument error\n");
+		exit(1);
+	}
+#endif
+
+#ifdef NETWORK_UDP6
+	if(gPortNo && ipAddr[0] && inet_pton(AF_INET6, ipAddr, theAppConfig.netCfg.ipAddress) != 1 && uPortNo){
+		theAppConfig.netCfg.gPortNo = gPortNo;
+		theAppConfig.netCfg.uPortNo = uPortNo;
+
 	}else{
 		printf("argument error\n");
 		exit(1);

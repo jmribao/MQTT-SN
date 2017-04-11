@@ -61,6 +61,18 @@
 	//#define XBEE_FLOWCTL_CRTSCTS
 #endif
 
+/*=================================
+ *    Address Length
+ ==================================*/
+#if defined(NETWORK_UDP) || defined(NETWORK_XBEE)
+#define ADDRESS_64
+#endif
+
+#ifdef NETWORK_UDP6
+#define ADDRESS_128
+#endif
+
+
 /*======================================
  *         Debug Flag
  ======================================*/

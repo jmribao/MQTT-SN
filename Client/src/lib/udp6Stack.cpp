@@ -85,9 +85,6 @@ using namespace tomyClient;
 
 extern bool isNotZeroIPv6(uint8_t ipAddress[16]);
 extern uint16_t getUint16(uint8_t* pos);
-extern void setUint16(uint8_t* pos, uint16_t val);
-extern uint32_t getUint32(uint8_t* pos);
-extern void setUint32(uint8_t* pos, uint32_t val);
 
 /*=========================================
        Class Network
@@ -215,43 +212,53 @@ void UdpPort::close(){
 }
 
 bool UdpPort::open(Udp6Config config){
-	/*
+
 	const int reuse = 1;
 	char loopch = 0;
+	const int only6 = 1;
 
 	_gPortNo = htons(config.gPortNo);
-	_gIpAddr = getUint32(config.ipAddress);
 	_uPortNo = htons(config.uPortNo);
 
-	if( _gPortNo == 0 || _gIpAddr == 0 || _uPortNo == 0){
+	if( _gPortNo == 0 || !isNotZeroIPv6(_gIpAddr) || _uPortNo == 0){
 		return false;
 	}
 
-	_sockfdUcast = socket(AF_INET, SOCK_DGRAM, 0);
+	_sockfdUcast = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdUcast < 0){
+		return false;
+	}
+
+	if(setsockopt(_sockfdUcast, IPPROTO_IPV6, IPV6_V6ONLY, &only6, sizeof(only6))) {
 		return false;
 	}
 
 	setsockopt(_sockfdUcast, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-	struct sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_port = _uPortNo;
-	addr.sin_addr.s_addr = INADDR_ANY;
+	sockaddr_in6 addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = _uPortNo;
+	addr.sin6_addr = in6addr_any;
 
 	if( ::bind ( _sockfdUcast, (struct sockaddr*)&addr,  sizeof(addr)) <0){
 		return false;
 	}
 
-	_sockfdMcast = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	_sockfdMcast = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdMcast < 0){
 		return false;
 	}
 
-	struct sockaddr_in addrm;
-	addrm.sin_family = AF_INET;
-	addrm.sin_port = _gPortNo;
-	addrm.sin_addr.s_addr = INADDR_ANY;
+	if(setsockopt(_sockfdMcast, IPPROTO_IPV6, IPV6_V6ONLY, &only6, sizeof(only6))) {
+		return false;
+	}
+
+	sockaddr_in6 addrm;
+	memset(&addrm, 0, sizeof(addrm));
+	addrm.sin6_family = AF_INET;
+	addrm.sin6_port = _gPortNo;
+	addrm.sin6_addr = in6addr_any;
 
 	setsockopt(_sockfdMcast, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
@@ -259,29 +266,35 @@ bool UdpPort::open(Udp6Config config){
 		return false;
 	}
 
-	if(setsockopt(_sockfdUcast, IPPROTO_IP, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+	if(setsockopt(_sockfdUcast, IPPROTO_IPV6, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
 		D_NWSTACKW("error IP_MULTICAST_LOOP in UdpPort::open\n");
 
 		close();
 		return false;
 	}
 
-	if(setsockopt(_sockfdMcast, IPPROTO_IP, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+	if(setsockopt(_sockfdMcast, IPPROTO_IPV6, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
 		D_NWSTACKW("error IP_MULTICAST_LOOP in UdpPPort::open\n");
 		close();
 		return false;
 	}
 
-	ip_mreq mreq;
-	mreq.imr_interface.s_addr = INADDR_ANY;
-	mreq.imr_multiaddr.s_addr = getUint32(config.ipAddress);
+	ipv6_mreq mreq;
 
-	if( setsockopt(_sockfdMcast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq) )< 0){
+	/* Accept multicast from any interface */
+	mreq.ipv6mr_interface = 0;
+
+	/* Specify the multicast group */
+	memcpy(&mreq.ipv6mr_multiaddr,
+		   config.ipAddress,
+		   sizeof(mreq.ipv6mr_multiaddr));
+
+	if( setsockopt(_sockfdMcast, IPPROTO_IPV6, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq) )< 0){
 		D_NWSTACKF("error IP_ADD_MEMBERSHIP in UdpPort::open\n");
 		close();
 		return false;
 	}
-*/
+
 	return true;
 }
 
@@ -291,11 +304,12 @@ bool UdpPort::isUnicast(){
 
 
 int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
-	/*
-	struct sockaddr_in dest;
-	dest.sin_family = AF_INET;
-	dest.sin_port = port;
-	dest.sin_addr.s_addr = ipAddress;
+	sockaddr_in6 dest;
+	dest.sin6_family = AF_INET6;
+	dest.sin6_port = port;
+	memcpy(&dest.sin6_addr,
+			   ipaddress,
+               sizeof(dest.sin6_addr));
 
 	int status = ::sendto( _sockfdUcast, buf, length, 0, (const sockaddr*)&dest, sizeof(dest) );
 	if( status < 0){
@@ -308,18 +322,16 @@ int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 		D_NWSTACKF(" ]\n");
 	}
 	return status;
-	*/
-	return 0;
 }
 
 
 int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
-	/*
-	struct sockaddr_in dest;
-	dest.sin_family = AF_INET;
-	dest.sin_port = _gPortNo;
-	dest.sin_addr.s_addr = _gIpAddr;
-
+	sockaddr_in6 dest;
+	dest.sin6_family = AF_INET6;
+	dest.sin6_port = _gPortNo;
+	memcpy(&dest.sin6_addr,
+			   _gIpAddr,
+               sizeof(dest.sin6_addr));
 	int status = ::sendto( _sockfdMcast, buf, length, 0, (const sockaddr*)&dest, sizeof(dest) );
 	if( status < 0){
 		D_NWSTACKF("errno == %d in UdpPort::multicast\n", errno);
@@ -330,7 +342,6 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 		}
 		D_NWSTACKF(" ]\n");
 	}
-	*/
 	return errno;
 }
 
@@ -376,8 +387,7 @@ int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint8_t ipaddress[16], u
 }
 
 int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16], uint16_t* portPtr ){
-	/*
-	struct sockaddr_in sender;
+	sockaddr_in6 sender;
 	int status;
 	socklen_t addrlen = sizeof(sender);
 	memset(&sender, 0, addrlen);
@@ -393,8 +403,10 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress
 	if (status < 0 && errno != EAGAIN)	{
 		D_NWSTACKF("errno == %d in UdpPort::recvfrom \n", errno);
 	}else if(status > 0){
-		*ipAddressPtr = sender.sin_addr.s_addr;
-		*portPtr = sender.sin_port;
+		memcpy(ipaddress,
+	               &sender.sin6_addr,
+	               sizeof(sender.sin6_addr));
+		*portPtr = sender.sin6_port;
 		D_NWSTACKF("recved from %s:%u [",inet_ntoa(sender.sin_addr), htons(*portPtr));
 		for(uint16_t i = 0; i < status ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
@@ -404,8 +416,6 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress
 		return 0;
 	}
 	return status;
-	*/
-	return 0;
 }
 
 /*=========================================
