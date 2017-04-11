@@ -36,49 +36,22 @@
 #ifndef UDP6STACK_H_
 #define UDP6STACK_H_
 
-#ifdef ARDUINO
-	#include <MQTTSN_Application.h>
-	#include <mqUtil.h>
-	#include <Network.h>
-#else
-	#include "MQTTSN_Application.h"
-	#include "mqUtil.h"
-	#include "Network.h"
-#endif
+#include "MQTTSN_Application.h"
+#include "mqUtil.h"
+#include "Network.h"
 
 #ifdef NETWORK_UDP6
 
-#ifdef ARDUINO
-	#include <SPI.h>
-	#include <Ethernet.h>
-	#include <EthernetUdp.h>
-    #if ARDUINO >= 100
-        #include "Arduino.h"
-        #include <inttypes.h>
-    #else
-        #if ARDUINO < 100
-            #include "WProgram.h"
-            #include <inttypes.h>
-        #endif
-    #endif
-#endif /* ARDUINO */
+#include <sys/time.h>
+#include <iostream>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <string>
+#include <arpa/inet.h>
 
-
-#ifdef MBED
-    #include "mbed.h"
-#endif
-
-#ifdef LINUX
-    #include <sys/time.h>
-    #include <iostream>
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-	#include <netdb.h>
-	#include <unistd.h>
-	#include <string>
-	#include <arpa/inet.h>
-#endif
 
 #define STAT_UNICAST   1
 #define STAT_MULTICAST 2
@@ -95,20 +68,20 @@ using namespace std;
 namespace tomyClient {
 
 /*============================================
-              NWAddress64
+              NWAddress128
  =============================================*/
-class NWAddress64 {
+class NWAddress128 {
 public:
-	NWAddress64(uint32_t msb, uint32_t lsb);
-	NWAddress64(void);
-	uint32_t getMsb();
-	uint32_t getLsb();
-	void setMsb(uint32_t msb);
-	void setLsb(uint32_t lsb);
+	NWAddress128(uint8_t address[16]);
+	NWAddress128(void);
+	uint8_t* getAddress(uint8_t address[16]);
+	void setAddress(uint8_t address[16]);
+	void resetAddress();
+	bool isAddress(uint8_t address[16]);
+	bool operator==(NWAddress128&);
 private:
-	uint32_t _msb;
-	uint32_t _lsb;
-};
+	uint8_t _address[16];
+} __attribute__((__packed__));
 
 /*============================================
                NWResponse
@@ -127,17 +100,17 @@ public:
 	uint16_t getBodyLength();
 	uint8_t  getPayloadLength();
 	uint16_t getAddress16();
-	NWAddress64& getAddress64();
+	NWAddress128& getAddress128();
 	void setLength(uint16_t len);
 //	void setType(uint8_t type);
 	void setFrame(uint8_t* framePtr);
-	void setAddress64(uint32_t msb, uint32_t ipAddress);
+	void setAddress128(uint8_t address[16]);
 	void setAddress16(uint16_t portNo);
 	void setErrorCode(uint8_t);
 	void setAvailable(bool);
 	void resetResponse();
 private:
-	NWAddress64 _addr64;
+	NWAddress128 _addr128;
 	uint16_t _addr16;
 	uint16_t _len;
 	uint8_t* _frameDataPtr;
@@ -157,36 +130,23 @@ public:
 
 	bool open(NETWORK_CONFIG config);
 
-	int unicast(const uint8_t* buf, uint32_t length, uint32_t ipaddress, uint16_t port  );
+	int unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  );
 	int multicast( const uint8_t* buf, uint32_t length );
-	int recv(uint8_t* buf, uint16_t len, bool nonblock, uint32_t* ipaddress, uint16_t* port );
+	int recv(uint8_t* buf, uint16_t len, bool nonblock, uint8_t ipaddress[16], uint16_t* port );
 	int recv(uint8_t* buf, uint16_t len, int flags);
 	bool checkRecvBuf();
 	bool isUnicast();
 
 private:
 	void close();
-	int recvfrom ( uint8_t* buf, uint16_t len, int flags, uint32_t* ipaddress, uint16_t* port );
+	int recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16], uint16_t* port );
 
-#ifdef LINUX
 	int _sockfdUcast;
 	int _sockfdMcast;
 	uint16_t _gPortNo;
 	uint16_t _uPortNo;
-	uint32_t _gIpAddr;
+	uint8_t _gIpAddr[16];
 	uint8_t  _castStat;
-#endif
-#ifdef ARDUINO
-	EthernetUDP _udpUnicast;
-	EthernetUDP _udpMulticast;
-	IPAddress   _gIpAddr;
-	IPAddress   _cIpAddr;
-	uint16_t    _gPortNo;
-	uint16_t    _uPortNo;
-	uint8_t*    _macAddr;
-	uint8_t     _castStat;
-#endif
-
 	bool   _disconReq;
 
 };
@@ -212,7 +172,7 @@ private:
     int  readApiFrame();
 
 	NWResponse _nlResp;
-    uint32_t _gwIpAddress;
+    uint8_t _gwIpAddress[16];
 	uint16_t _gwPortNo;
     int     _returnCode;
     bool _sleepflg;

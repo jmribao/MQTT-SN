@@ -28,8 +28,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  Created on: 2017/04/09
- *    Modified:
- *      Author: Juan Manuel Fernández Ribao
+ *    Modified: Juan Manuel Fernández Ribao
+ *      Author: Tomoaki YAMAGUCHI
  *     Version: 0.0.0
  */
 

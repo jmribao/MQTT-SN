@@ -57,6 +57,14 @@ using namespace tomyClient;
         Global functions
  ======================================*/
 
+bool isNotZeroIPv6(uint8_t ipAddress[16]) {
+	int sum = 0;
+	for (int i = 0; i < 16; ++i) {
+	  sum |= ipAddress[i];
+	}
+	return sum!=0;
+}
+
 #ifdef CPU_LITTLEENDIANN
 
 /*--- For Little endianness ---*/

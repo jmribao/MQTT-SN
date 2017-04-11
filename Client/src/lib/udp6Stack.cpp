@@ -44,7 +44,7 @@
 #ifdef NETWORK_UDP6
 
 #ifdef ARDUINO
-  #include <udpStack.h>
+  #include <udp6Stack.h>
   #include <mqUtil.h>
   #include <SPI.h>
   #include <Ethernet.h>
@@ -59,12 +59,12 @@
 
 #ifdef MBED
         #include "mbed.h"
-        #include "udpStack.h"
+        #include "udp6Stack.h"
 		#include "mqUtil.h"
 #endif /* MBED */
 
 #ifdef LINUX
-        #include "udpStack.h"
+        #include "udp6Stack.h"
 		#include "mqUtil.h"
         #include <stdio.h>
         #include <sys/time.h>
@@ -83,6 +83,7 @@
 using namespace std;
 using namespace tomyClient;
 
+extern bool isNotZeroIPv6(uint8_t ipAddress[16]);
 extern uint16_t getUint16(uint8_t* pos);
 extern void setUint16(uint8_t* pos, uint16_t val);
 extern uint32_t getUint32(uint8_t* pos);
@@ -126,15 +127,16 @@ int  Network::readPacket(uint8_t type){
 
 int  Network::readApiFrame(){
 	uint16_t portNo = 0;
-	uint32_t ipAddress = 0;
+	uint8_t ipAddress[16];
 	uint16_t len;
+	memset(ipAddress, 0, 16*sizeof(uint8_t));
 
 	if (_nlResp.isAvailable() || _nlResp.isError()){
 	   _nlResp.setAvailable(false);
 	   _nlResp.setErrorCode(NO_ERROR);
 	}
 
-	uint16_t recvLen = recv(_rxFrameDataBuf, MQTTSN_MAX_FRAME_SIZE, false, &ipAddress, &portNo);
+	uint16_t recvLen = recv(_rxFrameDataBuf, MQTTSN_MAX_FRAME_SIZE, false, ipAddress, &portNo);
 
 	if( recvLen > 0){
 		if(*_rxFrameDataBuf == 0x01){
@@ -146,8 +148,8 @@ int  Network::readApiFrame(){
 		if( len != recvLen){
 			_nlResp.setErrorCode(PACKET_EXCEEDS_LENGTH);
 						return false;
-		}else if(_gwIpAddress && isUnicast() &&
-		 		 (_nlResp.getAddress64().getLsb() != _gwIpAddress) &&
+		}else if(isNotZeroIPv6(_gwIpAddress) && isUnicast() &&
+		 		 (!_nlResp.getAddress128().isAddress(_gwIpAddress)) &&
 				 (_nlResp.getAddress16() != _gwPortNo)){
 			D_NWSTACKW("  Sender is not Gateway!\r\n" );
 			return false;
@@ -156,7 +158,7 @@ int  Network::readApiFrame(){
 			_nlResp.setAvailable(true);
 			_nlResp.setFrame(_rxFrameDataBuf);
 			_nlResp.setAddress16(portNo);
-			_nlResp.setAddress64(0,ipAddress);
+			_nlResp.setAddress128(ipAddress);
 			return true;
 		}
 	}
@@ -165,11 +167,11 @@ int  Network::readApiFrame(){
 
 void Network::setGwAddress(){
 	_gwPortNo = _nlResp.getAddress16();
-	_gwIpAddress = _nlResp.getAddress64().getLsb();
+	_nlResp.getAddress128().getAddress(_gwIpAddress);
 }
 
 void Network::resetGwAddress(void){
-	_gwIpAddress = 0;
+	memset(_gwIpAddress, 0, 16*sizeof(uint8_t));
 	_gwPortNo = 0;
 }
 
@@ -188,109 +190,6 @@ void Network::setSleep(){
 /*=========================================
        Class udpStack
  =========================================*/
-#ifdef ARDUINO
-/**
- *  For Arduino
- */
-UdpPort::UdpPort(){
-
-}
-
-UdpPort::~UdpPort(){
-    close();
-}
-
-void UdpPort::close(){
-
-}
-
-
-bool UdpPort::open(Udp6Config config){
-	_gIpAddr = IPAddress(config.ipAddress);
-	_cIpAddr = IPAddress(config.ipLocal);
-	_gPortNo = config.gPortNo;
-	_uPortNo = config.uPortNo;
-
-	memcpy(_macAddr, config.macAddr, 6);
-
-	Ethernet.begin(_macAddr, _cIpAddr);
-
-	if(_udpMulticast.beginMulti(_gIpAddr, _gPortNo) == 0){
-		return false;
-	}
-	if(_udpUnicast.begin(_uPortNo) == 0){
-		return false;
-	}
-
-	return true;
-}
-
-int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint32_t ipAddress, uint16_t port  ){
-
-	IPAddress ip = IPAddress(ipAddress);
-	_udpUnicast.beginPacket(ip, port);
-	_udpUnicast.write(buf, length);
-	return _udpUnicast.endPacket();
-}
-
-
-int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
-	_udpMulticast.beginPacket(_gIpAddr, _gPortNo);
-	_udpMulticast.write(buf, length);
-	return _udpMulticast.endPacket();
-}
-
-bool UdpPort::checkRecvBuf(){
-	int ps = _udpUnicast.parsePacket();
-	if(ps > 0){
-		_castStat = STAT_UNICAST;
-		return true;
-	}else if ( (ps = _udpMulticast.parsePacket()) > 0){
-		_castStat = STAT_MULTICAST;
-		return true;
-	}
-	_castStat = 0;
-	return 0;
-}
-
-int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint32_t* ipAddressPtr, uint16_t* portPtr){
-	return recvfrom ( buf, len, 0, ipAddressPtr, portPtr );
-}
-
-int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint32_t* ipAddressPtr, uint16_t* portPtr ){
-	IPAddress remoteIp;
-	uint8_t packLen;
-	if(_castStat == STAT_UNICAST){
-		packLen = _udpUnicast.read(buf, len);
-		*portPtr = _udpUnicast.remotePort();
-		remoteIp = _udpUnicast.remoteIP();
-	}else if(_castStat == STAT_MULTICAST){
-		packLen = _udpMulticast.read(buf, len);
-		*portPtr = _udpMulticast.remotePort();
-		remoteIp = _udpMulticast.remoteIP();
-	}else{
-		return 0;
-	}
-	memcpy(ipAddressPtr,remoteIp.raw_address(), 4);
-	return packLen;
-}
-
-bool UdpPort::isUnicast(){
-	return ( _castStat == STAT_UNICAST);
-}
-
-#endif /* ARDUINO */
-
-
-#ifdef MBED
-/**
- *  For MBED
- */
-
-
-#endif /* MBED */
-
-#ifdef LINUX
 
 UdpPort::UdpPort(){
     _disconReq = false;
@@ -316,6 +215,7 @@ void UdpPort::close(){
 }
 
 bool UdpPort::open(Udp6Config config){
+	/*
 	const int reuse = 1;
 	char loopch = 0;
 
@@ -381,12 +281,6 @@ bool UdpPort::open(Udp6Config config){
 		close();
 		return false;
 	}
-/*
-	if( setsockopt(_sockfdUcast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq) )< 0){
-		D_NWSTACKF("error IP_ADD_MEMBERSHIP in UdpPort::open\n");
-		close();
-		return false;
-	}
 */
 	return true;
 }
@@ -396,7 +290,8 @@ bool UdpPort::isUnicast(){
 }
 
 
-int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint32_t ipAddress, uint16_t port  ){
+int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
+	/*
 	struct sockaddr_in dest;
 	dest.sin_family = AF_INET;
 	dest.sin_port = port;
@@ -413,10 +308,13 @@ int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint32_t ipAddress, ui
 		D_NWSTACKF(" ]\n");
 	}
 	return status;
+	*/
+	return 0;
 }
 
 
 int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
+	/*
 	struct sockaddr_in dest;
 	dest.sin_family = AF_INET;
 	dest.sin_port = _gPortNo;
@@ -432,6 +330,7 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 		}
 		D_NWSTACKF(" ]\n");
 	}
+	*/
 	return errno;
 }
 
@@ -471,12 +370,13 @@ bool UdpPort::checkRecvBuf(){
 	return false;
 }
 
-int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint32_t* ipAddressPtr, uint16_t* portPtr){
+int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint8_t ipaddress[16], uint16_t* portPtr){
 	int flags = flg ? MSG_DONTWAIT : 0;
-	return recvfrom (buf, len, flags, ipAddressPtr, portPtr );
+	return recvfrom (buf, len, flags, ipaddress, portPtr );
 }
 
-int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint32_t* ipAddressPtr, uint16_t* portPtr ){
+int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16], uint16_t* portPtr ){
+	/*
 	struct sockaddr_in sender;
 	int status;
 	socklen_t addrlen = sizeof(sender);
@@ -504,37 +404,39 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint32_t* ipAddre
 		return 0;
 	}
 	return status;
+	*/
+	return 0;
 }
-
-
-#endif
 
 /*=========================================
              Class NLLongAddress
  =========================================*/
-NWAddress64::NWAddress64(){
-    _msb = _lsb = 0;
+NWAddress128::NWAddress128(){
+	memset(_address, 0, 16*sizeof(uint8_t));
 }
 
-NWAddress64::NWAddress64(uint32_t msb, uint32_t lsb){
-    _msb = msb;
-    _lsb = lsb;
+NWAddress128::NWAddress128(uint8_t address[16]){
+	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
-uint32_t NWAddress64::getMsb(){
-    return _msb;
+uint8_t* NWAddress128::getAddress(uint8_t address[16]){
+    return (uint8_t*)memcpy(address, _address, 16*sizeof(uint8_t));
 }
 
-uint32_t NWAddress64::getLsb(){
-    return _lsb;
+void NWAddress128::setAddress(uint8_t address[16]){
+	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
-void NWAddress64::setMsb(uint32_t msb){
-    _msb = msb;
+void NWAddress128::resetAddress(){
+	memset(_address, 0, 16*sizeof(uint8_t));
 }
 
-void NWAddress64::setLsb(uint32_t lsb){
-    _lsb = lsb;
+bool NWAddress128::isAddress(uint8_t address[16]){
+	return memcmp(_address, address, 16*sizeof(uint8_t))==0;
+}
+
+bool NWAddress128::operator==(NWAddress128& addr){
+	return memcmp(_address, addr._address, 16*sizeof(uint8_t))==0;
 }
 
 /*=========================================
@@ -556,17 +458,16 @@ void NWResponse::setFrame(uint8_t* framePtr){
 	_frameDataPtr = framePtr;
 }
 
-NWAddress64&  NWResponse::getAddress64(){
-    return _addr64;
+NWAddress128&  NWResponse::getAddress128(){
+    return _addr128;
 }
 
 uint16_t NWResponse::getAddress16(){
   return _addr16;
 }
 
-void  NWResponse::setAddress64(uint32_t msb, uint32_t lsb){
-    _addr64.setMsb(msb);
-    _addr64.setLsb(lsb);
+void  NWResponse::setAddress128(uint8_t address[16]){
+    _addr128.setAddress(address);
 }
 
 void  NWResponse::setAddress16(uint16_t addr16){
@@ -618,8 +519,7 @@ uint8_t NWResponse::getPayloadLength(){
 }
 
 void NWResponse::resetResponse(){
-	_addr64.setLsb(0);
-	_addr64.setMsb(0);
+	_addr128.resetAddress();
 	_addr16 = 0;
 	_len = 0;
 	_errorCode = 0;
