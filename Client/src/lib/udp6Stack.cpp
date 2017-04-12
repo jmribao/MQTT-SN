@@ -212,6 +212,7 @@ void UdpPort::close(){
 }
 
 bool UdpPort::open(Udp6Config config){
+
 	const int reuse = 1;
 	const int loopch = 0;
 	const int only6 = 1;
