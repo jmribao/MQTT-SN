@@ -145,7 +145,7 @@ void UDPPort::close(){
 
 int UDPPort::open(Udp6Config config){
 
-	char loopch = 0;
+	const int loopch = 0;
 	const int reuse = 1;
 	const int only6 = 1;
 
@@ -181,7 +181,7 @@ int UDPPort::open(Udp6Config config){
 		return -1;
 	}
 
-	if(setsockopt(_sockfdUnicast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+	if(setsockopt(_sockfdUnicast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loopch, sizeof(loopch)) <0 ){
 		D_NWSTACK("error IPV6_MULTICAST_LOOP in UDPPort::open\n");
 		close();
 		return -1;
@@ -209,11 +209,13 @@ int UDPPort::open(Udp6Config config){
 	if( ::bind ( _sockfdMulticast, (sockaddr*)&addrm,  sizeof(addrm)) <0){
 		return -1;
 	}
-	if(setsockopt(_sockfdMulticast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
+
+	if(setsockopt(_sockfdMulticast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loopch, sizeof(loopch)) <0 ){
 		D_NWSTACK("error IPV6_MULTICAST_LOOP in UDPPort::open\n");
 		close();
 		return -1;
 	}
+
 
 	ipv6_mreq mreq;
 
@@ -253,7 +255,7 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 	if( status < 0){
 		D_NWSTACK("errno == %d in UDP6Port::sendto\n", errno);
 	}
-	D_NWSTACK("sendto %s:%u length = %d\n",inet_ntoa(dest.sin_addr), htons(port), status);
+	D_NWSTACK("sendto:%u length = %d\n",htons(port), status);
 	return status;
 }
 
