@@ -233,7 +233,7 @@ void MqttsnClientApplication::initialize(int argc, char** argv){
 #endif
 
 #ifdef NETWORK_UDP6
-	if(gPortNo && ipAddr[0] && inet_pton(AF_INET6, ipAddr, theAppConfig.netCfg.ipAddress) != 1 && uPortNo){
+	if(gPortNo && ipAddr[0] && inet_pton(AF_INET6, ipAddr, theAppConfig.netCfg.ipAddress) == 1 && uPortNo){
 		theAppConfig.netCfg.gPortNo = gPortNo;
 		theAppConfig.netCfg.uPortNo = uPortNo;
 
