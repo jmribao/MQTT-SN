@@ -212,12 +212,12 @@ void UdpPort::close(){
 }
 
 bool UdpPort::open(Udp6Config config){
-
 	const int reuse = 1;
-	char loopch = 0;
+	const int loopch = 0;
 	const int only6 = 1;
 
 	_gPortNo = htons(config.gPortNo);
+	memcpy(_gIpAddr, config.ipAddress, 16*sizeof(uint8_t));
 	_uPortNo = htons(config.uPortNo);
 
 	if( _gPortNo == 0 || !isNotZeroIPv6(_gIpAddr) || _uPortNo == 0){
@@ -315,7 +315,7 @@ int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 	if( status < 0){
 		D_NWSTACKF("errno == %d in UdpPort::unicast\n", errno);
 	}else{
-		D_NWSTACKF("sendto %s:%u  [",inet_ntoa(dest.sin_addr),htons(port));
+		D_NWSTACKF("sendto:%u  [",htons(port));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -336,7 +336,7 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 	if( status < 0){
 		D_NWSTACKF("errno == %d in UdpPort::multicast\n", errno);
 	}else{
-		D_NWSTACKF("sendto %s:%u  [",inet_ntoa(dest.sin_addr),htons(_gPortNo));
+		D_NWSTACKF("sendto:%u  [",htons(_gPortNo));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -407,7 +407,7 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress
 	               &sender.sin6_addr,
 	               sizeof(sender.sin6_addr));
 		*portPtr = sender.sin6_port;
-		D_NWSTACKF("recved from %s:%u [",inet_ntoa(sender.sin_addr), htons(*portPtr));
+		D_NWSTACKF("recved from:%u [", htons(*portPtr));
 		for(uint16_t i = 0; i < status ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
