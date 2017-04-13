@@ -21,7 +21,7 @@ $(SUBDIR)/ZBStack.cpp
 
 CXX := g++
 CPPFLAGS += 
-DEFS :=-DNETWORK_UDP6
+DEFS :=-DNETWORK_UDP6 -DNW_DEBUG -DMQTTSN_DEBUG -DDEBUG_NWSTACK
 LDFLAGS += 
 LIBS +=
 #LDADD := -lpthread -lrt -lssl -lcrypto
