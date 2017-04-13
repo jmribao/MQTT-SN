@@ -123,10 +123,10 @@ void ClientRecvTask::run(){
 #endif
 
 #ifdef NETWORK_UDP6
-	if(_res->getParam("BroadcastIP", param) == 0){
+	if(_res->getParam("MulticastIP", param) == 0){
 		config.ipAddress = strdup(param);
 	}
-	if(_res->getParam("BroadcastPortNo",param) == 0){
+	if(_res->getParam("MulticastPortNo",param) == 0){
 		config.gPortNo = atoi(param);
 	}
 	if(_res->getParam("GatewayPortNo",param) == 0){
