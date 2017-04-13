@@ -257,7 +257,7 @@ bool UdpPort::open(Udp6Config config){
 
 	sockaddr_in6 addrm;
 	memset(&addrm, 0, sizeof(addrm));
-	addrm.sin6_family = AF_INET;
+	addrm.sin6_family = AF_INET6;
 	addrm.sin6_port = _gPortNo;
 	addrm.sin6_addr = in6addr_any;
 
@@ -267,15 +267,14 @@ bool UdpPort::open(Udp6Config config){
 		return false;
 	}
 
-	if(setsockopt(_sockfdUcast, IPPROTO_IPV6, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
-		D_NWSTACKW("error IP_MULTICAST_LOOP in UdpPort::open\n");
-
+	if(setsockopt(_sockfdUcast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loopch, sizeof(loopch)) <0 ){
+		D_NWSTACKW("_sockfdUcast error IP_MULTICAST_LOOP in UdpPort::open\n");
 		close();
 		return false;
 	}
 
-	if(setsockopt(_sockfdMcast, IPPROTO_IPV6, IP_MULTICAST_LOOP,(char*)&loopch, sizeof(loopch)) <0 ){
-		D_NWSTACKW("error IP_MULTICAST_LOOP in UdpPPort::open\n");
+	if(setsockopt(_sockfdMcast, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loopch, sizeof(loopch)) <0 ){
+		D_NWSTACKW("_sockfdMcast error IP_MULTICAST_LOOP in UdpPPort::open\n");
 		close();
 		return false;
 	}
@@ -290,7 +289,7 @@ bool UdpPort::open(Udp6Config config){
 		   config.ipAddress,
 		   sizeof(mreq.ipv6mr_multiaddr));
 
-	if( setsockopt(_sockfdMcast, IPPROTO_IPV6, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq) )< 0){
+	if( setsockopt(_sockfdMcast, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq, sizeof(mreq) )< 0){
 		D_NWSTACKF("error IP_ADD_MEMBERSHIP in UdpPort::open\n");
 		close();
 		return false;
