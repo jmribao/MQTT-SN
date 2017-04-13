@@ -159,6 +159,8 @@ int UDPPort::open(Udp6Config config){
 	      return -1;
 	}
 
+	D_NWSTACK("IPv6 address :%s\n",config.ipAddress);
+
 	/*------ Create unicast socket --------*/
 	_sockfdUnicast = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if (_sockfdUnicast < 0){
@@ -255,7 +257,9 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 	if( status < 0){
 		D_NWSTACK("errno == %d in UDP6Port::sendto\n", errno);
 	}
-	D_NWSTACK("sendto:%u length = %d\n",htons(port), status);
+	char straddr[INET6_ADDRSTRLEN];
+	D_NWSTACK("sendto %s:%u length = %d\n",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(port), status);
 	return status;
 }
 
@@ -309,6 +313,7 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
 	D_NWSTACK("recved from %s:%d length = %d\n",
 		  inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
 		  htons(*portPtr),status);
+
 	return status;
 }
 
