@@ -316,7 +316,9 @@ int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 	if( status < 0){
 		D_NWSTACKF("errno == %d in UdpPort::unicast\n", errno);
 	}else{
-		D_NWSTACKF("sendto:%u  [",htons(port));
+		char straddr[INET6_ADDRSTRLEN];
+		D_NWSTACKF("sendto %s:%u  [",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(port));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -337,7 +339,9 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 	if( status < 0){
 		D_NWSTACKF("errno == %d in UdpPort::multicast\n", errno);
 	}else{
-		D_NWSTACKF("sendto:%u  [",htons(_gPortNo));
+		char straddr[INET6_ADDRSTRLEN];
+		D_NWSTACKF("sendto %s:%u  [",
+			inet_ntop(AF_INET6, _gIpAddr, straddr, sizeof(straddr)),htons(_gPortNo));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -408,7 +412,10 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress
 	               &sender.sin6_addr,
 	               sizeof(sender.sin6_addr));
 		*portPtr = sender.sin6_port;
-		D_NWSTACKF("recved from:%u [", htons(*portPtr));
+
+		char straddr[INET6_ADDRSTRLEN];
+		D_NWSTACKF("recved from %s:%u [",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(*portPtr));
 		for(uint16_t i = 0; i < status ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
