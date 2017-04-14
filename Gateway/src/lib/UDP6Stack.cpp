@@ -281,6 +281,8 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
 			#ifdef SCOPE_ID
 				scopeId,
+			#else
+				0,
 			#endif
 			htons(port), status);
 	return status;
