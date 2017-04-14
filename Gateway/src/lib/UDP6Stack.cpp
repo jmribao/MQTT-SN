@@ -71,9 +71,17 @@ Network::~Network(){
 
 }
 
-void Network::unicast(NWAddress128* addr128, uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
+void Network::unicast(NWAddress128* addr128,
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+		uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
 	uint8_t ipAddress[16];
-	UDPPort::unicast(payload, payloadLength, addr128->getAddress(ipAddress), addr128->getScopeId(), addr16);
+	UDPPort::unicast(payload, payloadLength, addr128->getAddress(ipAddress),
+		#ifdef SCOPE_ID
+			scopeId,
+		#endif
+		addr16);
 }
 
 void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
@@ -247,11 +255,17 @@ int UDPPort::open(Udp6Config config){
 }
 
 
-int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint32_t scopeId, uint16_t port  ){
+int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+		uint16_t port  ){
 	sockaddr_in6 dest;
 	dest.sin6_family = AF_INET6;
 	dest.sin6_port = port;
-	dest.sin6_scope_id = scopeId;
+	#ifdef SCOPE_ID
+		dest.sin6_scope_id = scopeId;
+	#endif
 	memcpy(&dest.sin6_addr,
 			   ipaddress,
                sizeof(dest.sin6_addr));
@@ -262,7 +276,11 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 	}
 	char straddr[INET6_ADDRSTRLEN];
 	D_NWSTACK("sendto %s/%d:%u length = %d\n",
-			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)), scopeId, htons(port), status);
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
+			#ifdef SCOPE_ID
+				scopeId,
+			#endif
+			htons(port), status);
 	return status;
 }
 
@@ -327,33 +345,22 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
  =========================================*/
 NWAddress128::NWAddress128(){
 	memset(_address, 0, 16*sizeof(uint8_t));
-	_scopeId = 0;
 }
 
-NWAddress128::NWAddress128(uint8_t address[16], uint32_t scopeId){
+NWAddress128::NWAddress128(uint8_t address[16]){
 	memcpy(_address, address, 16*sizeof(uint8_t));
-	_scopeId = scopeId;
 }
 
 uint8_t* NWAddress128::getAddress(uint8_t address[16]){
     return (uint8_t*)memcpy(address, _address, 16*sizeof(uint8_t));
 }
 
-uint32_t NWAddress128::getScopeId(){
-	return _scopeId;
-}
-
 void NWAddress128::setAddress(uint8_t address[16]){
 	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
-void NWAddress128::setScopeId(uint32_t scopeId){
-	_scopeId = scopeId;
-}
-
 bool NWAddress128::operator==(NWAddress128& addr){
-	return (_scopeId = addr._scopeId)
-		&& (memcmp(_address, addr._address, 16*sizeof(uint8_t))==0);
+	return memcmp(_address, addr._address, 16*sizeof(uint8_t))==0;
 }
 
 /*=========================================
@@ -376,6 +383,10 @@ NWAddress128*  NWResponse::getClientAddress128(){
     return &_addr128;
 }
 
+uint32_t  NWResponse::getClientScopeId(){
+    return _scopeId;
+}
+
 uint16_t NWResponse::getClientAddress16(){
   return _addr16;
 }
@@ -385,7 +396,7 @@ void  NWResponse::setClientAddress128(uint8_t address[16]){
 }
 
 void  NWResponse::setClientScopeId(uint32_t scopeId){
-    _addr128.setScopeId(scopeId);
+    _scopeId=scopeId;
 }
 
 void  NWResponse::setClientAddress16(uint16_t addr16){

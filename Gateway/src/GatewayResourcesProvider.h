@@ -121,7 +121,9 @@ public:
 	#ifdef ADDRESS_128
 		NWAddress128* getAddress128Ptr();
 	#endif
-
+	#ifdef SCOPE_ID
+		uint32_t getScopeId();
+	#endif
 	uint16_t  getAddress16();
 	string* getNodeId();
 	#ifdef ADDRESS_64
@@ -130,6 +132,8 @@ public:
 	#endif
 	#ifdef ADDRESS_128
 		void setAddress(uint8_t address[16]);
+	#endif
+	#ifdef SCOPE_ID
 		void setScopeId(uint32_t scopeId);
 	#endif
 	void setClientAddress16(uint16_t addr);
@@ -178,6 +182,9 @@ private:
 	#ifdef ADDRESS_128
 		NWAddress128 _address128;
 	#endif
+	#ifdef SCOPE_ID
+		uint32_t _scopeId;
+	#endif
     uint16_t _address16;
     string _nodeId;
     bool _connAckSaveFlg;
@@ -203,7 +210,11 @@ public:
 	#endif
 	#ifdef ADDRESS_128
 		ClientNode* getClient(NWAddress128* addr128, uint16_t addr16);
-		ClientNode* createNode(bool secure, NWAddress128* addr128, uint16_t addr16, string* nodeId = 0);
+		ClientNode* createNode(bool secure, NWAddress128* addr128,
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+		uint16_t addr16, string* nodeId = 0);
 	#endif
 	uint16_t getClientCount();
 	ClientNode* operator[](int);

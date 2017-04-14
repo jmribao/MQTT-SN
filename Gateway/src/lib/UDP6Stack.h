@@ -69,16 +69,13 @@ namespace tomyGateway{
  =============================================*/
 class NWAddress128 {
 public:
-	NWAddress128(uint8_t address[16], uint32_t scopeId);
+	NWAddress128(uint8_t address[16]);
 	NWAddress128(void);
 	uint8_t* getAddress(uint8_t address[16]);
-	uint32_t getScopeId();
 	void setAddress(uint8_t address[16]);
-	void setScopeId(uint32_t scopeId);
 	bool operator==(NWAddress128&);
 private:
 	uint8_t _address[16];
-	uint32_t _scopeId;
 } __attribute__((__packed__));
 
 /*============================================
@@ -97,14 +94,22 @@ public:
 	uint8_t  getPayloadLength();
 	uint16_t getClientAddress16();
 	NWAddress128* getClientAddress128();
+	#ifdef SCOPE_ID
+		uint32_t getClientScopeId();
+	#endif
 
 	void setLength(uint16_t len);
   	void setMsgType(uint8_t type);
 	void setClientAddress128(uint8_t address[16]);
-	void setClientScopeId(uint32_t scopeId);
+	#ifdef SCOPE_ID
+		void setClientScopeId(uint32_t scopeId);
+	#endif
 	void setClientAddress16(uint16_t portNo);
 private:
 	NWAddress128 _addr128;
+	#ifdef SCOPE_ID
+		uint32_t _scopeId;
+	#endif
 	uint16_t _addr16;
 	uint16_t _len;
 	uint8_t  _type;
@@ -148,7 +153,11 @@ public:
     Network();
     ~Network();
 
-    void unicast(NWAddress128* addr128, uint16_t addr16,	uint8_t* payload, uint16_t payloadLength);
+    void unicast(NWAddress128* addr128,
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+    	uint16_t addr16,	uint8_t* payload, uint16_t payloadLength);
 	void broadcast(uint8_t* payload, uint16_t payloadLength);
 	bool getResponse(NWResponse* response);
     int  initialize(Udp6Config  config);

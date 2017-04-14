@@ -433,6 +433,11 @@ Topics* ClientNode::getTopics(){
 		return &_address128;
 	}
 #endif
+#ifdef SCOPE_ID
+	uint32_t ClientNode::getScopeId(){
+		return _scopeId;
+	}
+#endif
 
 uint16_t ClientNode::getAddress16(){
     return _address16;
@@ -455,9 +460,10 @@ string* ClientNode::getNodeId(){
 	void ClientNode::setAddress(uint8_t address[16]){
 		_address128.setAddress(address);
 	}
-
+#endif
+#ifdef SCOPE_ID
 	void ClientNode::setScopeId(uint32_t scopeId){
-		_address128.setScopeId(scopeId);
+		_scopeId=scopeId;
 	}
 #endif
 
@@ -471,7 +477,6 @@ string* ClientNode::getNodeId(){
 	void ClientNode::setClientAddress128(NWAddress128* addr){
 		uint8_t address[16];
 		setAddress(addr->getAddress(address));
-		setScopeId(addr->getScopeId());
 	}
 #endif
 
@@ -552,7 +557,11 @@ ClientList::~ClientList(){
 		if(_clientCnt < MAX_CLIENT_NODES && !_authorize){
 #endif
 #ifdef ADDRESS_128
-	ClientNode* ClientList::createNode(bool secure, NWAddress128* addr128, uint16_t addr16, string* nodeId){
+	ClientNode* ClientList::createNode(bool secure, NWAddress128* addr128,
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+		 uint16_t addr16, string* nodeId){
 		if(_clientCnt < MAX_CLIENT_NODES){
 #endif
 		_mutex.lock();
@@ -562,7 +571,11 @@ ClientList::~ClientList(){
 				if(((*client)->getAddress64Ptr() == addr64) && ((*client)->getAddress16() == addr16)){
 			#endif
 			#ifdef ADDRESS_128
-				if(((*client)->getAddress128Ptr() == addr128) && ((*client)->getAddress16() == addr16)){
+				if(((*client)->getAddress128Ptr() == addr128)
+					#ifdef SCOPE_ID
+						&& ((*client)->getScopeId() == scopeId)
+					#endif
+					&& ((*client)->getAddress16() == addr16)){
 			#endif
 				return 0;
 			}else{
@@ -575,6 +588,9 @@ ClientList::~ClientList(){
 		#endif
 		#ifdef ADDRESS_128
 			node->setClientAddress128(addr128);
+		#endif
+		#ifdef SCOPE_ID
+			node->setScopeId(scopeId);
 		#endif
 		node->setClientAddress16(addr16);
 		if (nodeId){

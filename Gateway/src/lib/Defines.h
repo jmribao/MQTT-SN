@@ -83,6 +83,7 @@
 
 #ifdef NETWORK_UDP6
 #define ADDRESS_128
+#define SCOPE_ID
 #endif
 
 /*=================================

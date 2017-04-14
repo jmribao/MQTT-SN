@@ -133,7 +133,11 @@ void ClientSendTask::run(){
 					msg.getMessagePtr(), msg.getMessageLength());
 			#endif
 			#ifdef ADDRESS_128
-				_network->unicast(clnode->getAddress128Ptr(), clnode->getAddress16(),
+				_network->unicast(clnode->getAddress128Ptr(),
+					#ifdef SCOPE_ID
+						clnode->getScopeId(),
+					#endif
+					clnode->getAddress16(),
 					msg.getMessagePtr(), msg.getMessageLength());
 			#endif
 		}else if(ev->getEventType() == EtBroadcast){

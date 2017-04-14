@@ -170,6 +170,9 @@ void ClientRecvTask::run(){
 				#endif
 				#ifdef NETWORK_UDP6
 					ClientNode* node = _res->getClientList()->createNode(secure, resp->getClientAddress128(),
+																	#ifdef SCOPE_ID
+																		resp->getClientScopeId(),
+																	#endif
 																	resp->getClientAddress16());
 				#endif
 				#ifdef NETWORK_XXXXX
