@@ -73,7 +73,7 @@ Network::~Network(){
 
 void Network::unicast(NWAddress128* addr128, uint16_t addr16, uint8_t* payload, uint16_t payloadLength){
 	uint8_t ipAddress[16];
-	UDPPort::unicast(payload, payloadLength, addr128->getAddress(ipAddress), addr16);
+	UDPPort::unicast(payload, payloadLength, addr128->getAddress(ipAddress), addr128->getScopeId(), addr16);
 }
 
 void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
@@ -82,13 +82,14 @@ void Network::broadcast(uint8_t* payload, uint16_t payloadLength){
 
 bool Network::getResponse(NWResponse* response){
 	uint8_t ipAddress[16];
+	uint32_t scopeId = 0;
 	uint16_t portNo = 0;
 	uint16_t msgLen;
 	uint8_t  msgType;
 
 	uint8_t* buf = response->getPayloadPtr();
 	memset(ipAddress, 0, 16*sizeof(uint8_t));
-	uint16_t recvLen = UDPPort::recv(buf, MQTTSN_MAX_FRAME_SIZE, ipAddress, &portNo);
+	uint16_t recvLen = UDPPort::recv(buf, MQTTSN_MAX_FRAME_SIZE, ipAddress, &scopeId, &portNo);
 	if(recvLen < 0){
 		return false;
 	}else{
@@ -106,6 +107,7 @@ bool Network::getResponse(NWResponse* response){
 		response->setMsgType(msgType);
 		response->setClientAddress16(portNo);
 		response->setClientAddress128(ipAddress);
+		response->setClientScopeId(scopeId);
 		return true;
 	}
 }
@@ -245,10 +247,11 @@ int UDPPort::open(Udp6Config config){
 }
 
 
-int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
+int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint32_t scopeId, uint16_t port  ){
 	sockaddr_in6 dest;
 	dest.sin6_family = AF_INET6;
 	dest.sin6_port = port;
+	dest.sin6_scope_id = scopeId;
 	memcpy(&dest.sin6_addr,
 			   ipaddress,
                sizeof(dest.sin6_addr));
@@ -258,16 +261,16 @@ int UDPPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 		D_NWSTACK("errno == %d in UDP6Port::sendto\n", errno);
 	}
 	char straddr[INET6_ADDRSTRLEN];
-	D_NWSTACK("sendto %s:%u length = %d\n",
-			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(port), status);
+	D_NWSTACK("sendto %s/%d:%u length = %d\n",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)), scopeId, htons(port), status);
 	return status;
 }
 
 int UDPPort::multicast( const uint8_t* buf, uint32_t length ){
-	return unicast(buf, length,_gIpAddr, _gPortNo);
+	return unicast(buf, length,_gIpAddr, 0, _gPortNo);
 }
 
-int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* portPtr){
+int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint32_t* scopeIdPtr, uint16_t* portPtr){
 	fd_set recvfds;
 	int maxSock = 0;
 
@@ -284,14 +287,14 @@ int UDPPort::recv(uint8_t* buf, uint16_t len, uint8_t ipaddress[16], uint16_t* p
 	select(maxSock + 1, &recvfds, 0, 0, 0);
 
 	if(FD_ISSET(_sockfdUnicast, &recvfds)){
-		return recvfrom (_sockfdUnicast,buf, len, 0,ipaddress, portPtr );
+		return recvfrom (_sockfdUnicast,buf, len, 0,ipaddress, scopeIdPtr, portPtr );
 	}else if(FD_ISSET(_sockfdMulticast, &recvfds)){
-		return recvfrom (_sockfdMulticast,buf, len, 0,ipaddress, portPtr );
+		return recvfrom (_sockfdMulticast,buf, len, 0,ipaddress, scopeIdPtr, portPtr );
 	}
 	return 0;
 }
 
-int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint8_t ipaddress[16], uint16_t* portPtr ){
+int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, uint8_t ipaddress[16], uint32_t* scopeIdPtr, uint16_t* portPtr ){
 	sockaddr_in6 sender;
 	socklen_t addrlen = sizeof(sender);
 	memset(&sender, 0, addrlen);
@@ -306,6 +309,7 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
 	memcpy(ipaddress,
                &sender.sin6_addr,
                sizeof(sender.sin6_addr));
+	*scopeIdPtr = sender.sin6_scope_id;
 	*portPtr = (uint16_t)sender.sin6_port;
 
 	char straddr[INET6_ADDRSTRLEN];
@@ -323,22 +327,33 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
  =========================================*/
 NWAddress128::NWAddress128(){
 	memset(_address, 0, 16*sizeof(uint8_t));
+	_scopeId = 0;
 }
 
-NWAddress128::NWAddress128(uint8_t address[16]){
+NWAddress128::NWAddress128(uint8_t address[16], uint32_t scopeId){
 	memcpy(_address, address, 16*sizeof(uint8_t));
+	_scopeId = scopeId;
 }
 
 uint8_t* NWAddress128::getAddress(uint8_t address[16]){
     return (uint8_t*)memcpy(address, _address, 16*sizeof(uint8_t));
 }
 
+uint32_t NWAddress128::getScopeId(){
+	return _scopeId;
+}
+
 void NWAddress128::setAddress(uint8_t address[16]){
 	memcpy(_address, address, 16*sizeof(uint8_t));
 }
 
+void NWAddress128::setScopeId(uint32_t scopeId){
+	_scopeId = scopeId;
+}
+
 bool NWAddress128::operator==(NWAddress128& addr){
-	return memcmp(_address, addr._address, 16*sizeof(uint8_t))==0;
+	return (_scopeId = addr._scopeId)
+		&& (memcmp(_address, addr._address, 16*sizeof(uint8_t))==0);
 }
 
 /*=========================================
@@ -367,6 +382,10 @@ uint16_t NWResponse::getClientAddress16(){
 
 void  NWResponse::setClientAddress128(uint8_t address[16]){
     _addr128.setAddress(address);
+}
+
+void  NWResponse::setClientScopeId(uint32_t scopeId){
+    _addr128.setScopeId(scopeId);
 }
 
 void  NWResponse::setClientAddress16(uint16_t addr16){

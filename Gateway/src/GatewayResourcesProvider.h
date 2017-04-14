@@ -130,6 +130,7 @@ public:
 	#endif
 	#ifdef ADDRESS_128
 		void setAddress(uint8_t address[16]);
+		void setScopeId(uint32_t scopeId);
 	#endif
 	void setClientAddress16(uint16_t addr);
 	#ifdef ADDRESS_64

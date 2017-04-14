@@ -455,6 +455,10 @@ string* ClientNode::getNodeId(){
 	void ClientNode::setAddress(uint8_t address[16]){
 		_address128.setAddress(address);
 	}
+
+	void ClientNode::setScopeId(uint32_t scopeId){
+		_address128.setScopeId(scopeId);
+	}
 #endif
 
 #ifdef ADDRESS_64
@@ -467,6 +471,7 @@ string* ClientNode::getNodeId(){
 	void ClientNode::setClientAddress128(NWAddress128* addr){
 		uint8_t address[16];
 		setAddress(addr->getAddress(address));
+		setScopeId(addr->getScopeId());
 	}
 #endif
 
