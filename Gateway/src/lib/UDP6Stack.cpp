@@ -331,13 +331,20 @@ int UDPPort::recvfrom (int sockfd, uint8_t* buf, uint16_t len, uint8_t flags, ui
 	memcpy(ipaddress,
                &sender.sin6_addr,
                sizeof(sender.sin6_addr));
-	*scopeIdPtr = sender.sin6_scope_id;
+	#ifdef SCOPE_ID
+		*scopeIdPtr = sender.sin6_scope_id;
+	#endif
 	*portPtr = (uint16_t)sender.sin6_port;
 
 	char straddr[INET6_ADDRSTRLEN];
 
-	D_NWSTACK("recved from %s:%d length = %d\n",
+	D_NWSTACK("recved from %s/%d:%d length = %d\n",
 		  inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
+		  #ifdef SCOPE_ID
+		  	  *scopeIdPtr,
+		  #else
+			  0,
+		  #endif
 		  htons(*portPtr),status);
 
 	return status;
@@ -399,9 +406,11 @@ void  NWResponse::setClientAddress128(uint8_t address[16]){
     _addr128.setAddress(address);
 }
 
-void  NWResponse::setClientScopeId(uint32_t scopeId){
-    _scopeId=scopeId;
-}
+#ifdef SCOPE_ID
+	void  NWResponse::setClientScopeId(uint32_t scopeId){
+		_scopeId=scopeId;
+	}
+#endif
 
 void  NWResponse::setClientAddress16(uint16_t addr16){
 	_addr16 = addr16;
