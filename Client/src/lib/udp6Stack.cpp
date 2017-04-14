@@ -102,7 +102,11 @@ void Network::send(uint8_t* xmitData, uint8_t dataLen, SendReqType type){
 	if(type == BcastReq){
 		multicast(xmitData, (uint16_t)dataLen);
 	}else if(type == UcastReq ){
-		unicast(xmitData, (uint16_t)dataLen, _gwIpAddress, _gwPortNo);
+		unicast(xmitData, (uint16_t)dataLen, _gwIpAddress,
+			#ifdef SCOPE_ID
+				_scopeId,
+			#endif
+			_gwPortNo);
 	}
 }
 
@@ -125,6 +129,9 @@ int  Network::readPacket(uint8_t type){
 int  Network::readApiFrame(){
 	uint16_t portNo = 0;
 	uint8_t ipAddress[16];
+	#ifdef SCOPE_ID
+		uint32_t scopeId = 0;
+	#endif
 	uint16_t len;
 	memset(ipAddress, 0, 16*sizeof(uint8_t));
 
@@ -133,7 +140,11 @@ int  Network::readApiFrame(){
 	   _nlResp.setErrorCode(NO_ERROR);
 	}
 
-	uint16_t recvLen = recv(_rxFrameDataBuf, MQTTSN_MAX_FRAME_SIZE, false, ipAddress, &portNo);
+	uint16_t recvLen = recv(_rxFrameDataBuf, MQTTSN_MAX_FRAME_SIZE, false, ipAddress,
+			#ifdef SCOPE_ID
+				&scopeId,
+			#endif
+			&portNo);
 
 	if( recvLen > 0){
 		if(*_rxFrameDataBuf == 0x01){
@@ -147,6 +158,9 @@ int  Network::readApiFrame(){
 						return false;
 		}else if(isNotZeroIPv6(_gwIpAddress) && isUnicast() &&
 		 		 (!_nlResp.getAddress128().isAddress(_gwIpAddress)) &&
+				 #ifdef SCOPE_ID
+					(_nlResp.getScopeId() != _scopeId) &&
+				 #endif
 				 (_nlResp.getAddress16() != _gwPortNo)){
 			D_NWSTACKW("  Sender is not Gateway!\r\n" );
 			return false;
@@ -156,6 +170,9 @@ int  Network::readApiFrame(){
 			_nlResp.setFrame(_rxFrameDataBuf);
 			_nlResp.setAddress16(portNo);
 			_nlResp.setAddress128(ipAddress);
+			#ifdef SCOPE_ID
+				_nlResp.setScopeId(scopeId);
+			#endif
 			return true;
 		}
 	}
@@ -163,12 +180,18 @@ int  Network::readApiFrame(){
 }
 
 void Network::setGwAddress(){
-	_gwPortNo = _nlResp.getAddress16();
 	_nlResp.getAddress128().getAddress(_gwIpAddress);
+	#ifdef SCOPE_ID
+		_scopeId = _nlResp.getScopeId();
+	#endif
+	_gwPortNo = _nlResp.getAddress16();
 }
 
 void Network::resetGwAddress(void){
 	memset(_gwIpAddress, 0, 16*sizeof(uint8_t));
+	#ifdef SCOPE_ID
+		_scopeId = 0;
+	#endif
 	_gwPortNo = 0;
 }
 
@@ -303,10 +326,17 @@ bool UdpPort::isUnicast(){
 }
 
 
-int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  ){
+int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
+		#ifdef SCOPE_ID
+			uint32_t scopeId,
+		#endif
+		uint16_t port  ){
 	sockaddr_in6 dest;
 	dest.sin6_family = AF_INET6;
 	dest.sin6_port = port;
+	#ifdef SCOPE_ID
+		dest.sin6_scope_id = scopeId;
+	#endif
 	memcpy(&dest.sin6_addr,
 			   ipaddress,
                sizeof(dest.sin6_addr));
@@ -316,8 +346,14 @@ int UdpPort::unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
 		D_NWSTACKF("errno == %d in UdpPort::unicast\n", errno);
 	}else{
 		char straddr[INET6_ADDRSTRLEN];
-		D_NWSTACKF("sendto %s:%u  [",
-			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(port));
+		D_NWSTACKF("sendto %s/%d:%u  [",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
+			#ifdef SCOPE_ID
+				scopeId,
+			#else
+				0,
+			#endif
+			htons(port));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -331,6 +367,9 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 	sockaddr_in6 dest;
 	dest.sin6_family = AF_INET6;
 	dest.sin6_port = _gPortNo;
+	#ifdef SCOPE_ID
+		dest.sin6_scope_id = 0;
+	#endif
 	memcpy(&dest.sin6_addr,
 			   _gIpAddr,
                sizeof(dest.sin6_addr));
@@ -339,8 +378,10 @@ int UdpPort::multicast( const uint8_t* buf, uint32_t length ){
 		D_NWSTACKF("errno == %d in UdpPort::multicast\n", errno);
 	}else{
 		char straddr[INET6_ADDRSTRLEN];
-		D_NWSTACKF("sendto %s:%u  [",
-			inet_ntop(AF_INET6, _gIpAddr, straddr, sizeof(straddr)),htons(_gPortNo));
+		D_NWSTACKF("sendto %s/%d:%u  [",
+			inet_ntop(AF_INET6, _gIpAddr, straddr, sizeof(straddr)),
+			0,
+			htons(_gPortNo));
 		for(uint16_t i = 0; i < length ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -385,12 +426,24 @@ bool UdpPort::checkRecvBuf(){
 	return false;
 }
 
-int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint8_t ipaddress[16], uint16_t* portPtr){
+int UdpPort::recv(uint8_t* buf, uint16_t len, bool flg, uint8_t ipaddress[16],
+		#ifdef SCOPE_ID
+			uint32_t* scopeIdPtr,
+		#endif
+		uint16_t* portPtr){
 	int flags = flg ? MSG_DONTWAIT : 0;
-	return recvfrom (buf, len, flags, ipaddress, portPtr );
+	return recvfrom (buf, len, flags, ipaddress,
+			#ifdef SCOPE_ID
+				scopeIdPtr,
+			#endif
+			portPtr );
 }
 
-int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16], uint16_t* portPtr ){
+int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16],
+		#ifdef SCOPE_ID
+			uint32_t* scopeIdPtr,
+		#endif
+		uint16_t* portPtr ){
 	sockaddr_in6 sender;
 	int status;
 	socklen_t addrlen = sizeof(sender);
@@ -411,10 +464,18 @@ int UdpPort::recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress
 	               &sender.sin6_addr,
 	               sizeof(sender.sin6_addr));
 		*portPtr = sender.sin6_port;
-
+		#ifdef SCOPE_ID
+			*scopeIdPtr = sender.sin6_scope_id;
+		#endif
 		char straddr[INET6_ADDRSTRLEN];
-		D_NWSTACKF("recved from %s:%u [",
-			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),htons(*portPtr));
+		D_NWSTACKF("recved from %s/%d:%u [",
+			inet_ntop(AF_INET6, ipaddress, straddr, sizeof(straddr)),
+			#ifdef SCOPE_ID
+				*scopeIdPtr,
+			#else
+				0,
+			#endif
+			htons(*portPtr));
 		for(uint16_t i = 0; i < status ; i++){
 			D_NWSTACKF(" %02x", *(buf + i));
 		}
@@ -461,6 +522,9 @@ bool NWAddress128::operator==(NWAddress128& addr){
  =========================================*/
 NWResponse::NWResponse(){
     _addr16 = 0;
+	#ifdef SCOPE_ID
+		_scopeId = 0;
+	#endif
 }
 
 uint8_t  NWResponse::getFrameLength(){
@@ -479,6 +543,12 @@ NWAddress128&  NWResponse::getAddress128(){
     return _addr128;
 }
 
+#ifdef SCOPE_ID
+	uint32_t NWResponse::getScopeId(){
+		return _scopeId;
+	}
+#endif
+
 uint16_t NWResponse::getAddress16(){
   return _addr16;
 }
@@ -486,6 +556,12 @@ uint16_t NWResponse::getAddress16(){
 void  NWResponse::setAddress128(uint8_t address[16]){
     _addr128.setAddress(address);
 }
+
+#ifdef SCOPE_ID
+	void  NWResponse::setScopeId(uint32_t scopeId){
+		_scopeId = scopeId;
+	}
+#endif
 
 void  NWResponse::setAddress16(uint16_t addr16){
 	_addr16 = addr16;
@@ -537,6 +613,9 @@ uint8_t NWResponse::getPayloadLength(){
 
 void NWResponse::resetResponse(){
 	_addr128.resetAddress();
+	#ifdef SCOPE_ID
+		_scopeId = 0;
+	#endif
 	_addr16 = 0;
 	_len = 0;
 	_errorCode = 0;

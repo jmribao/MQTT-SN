@@ -101,16 +101,25 @@ public:
 	uint8_t  getPayloadLength();
 	uint16_t getAddress16();
 	NWAddress128& getAddress128();
+	#ifdef SCOPE_ID
+		uint32_t getScopeId();
+	#endif
 	void setLength(uint16_t len);
 //	void setType(uint8_t type);
 	void setFrame(uint8_t* framePtr);
 	void setAddress128(uint8_t address[16]);
+	#ifdef SCOPE_ID
+		void setScopeId(uint32_t scopeId);
+	#endif
 	void setAddress16(uint16_t portNo);
 	void setErrorCode(uint8_t);
 	void setAvailable(bool);
 	void resetResponse();
 private:
 	NWAddress128 _addr128;
+	#ifdef SCOPE_ID
+		uint32_t _scopeId;
+	#endif
 	uint16_t _addr16;
 	uint16_t _len;
 	uint8_t* _frameDataPtr;
@@ -130,16 +139,28 @@ public:
 
 	bool open(NETWORK_CONFIG config);
 
-	int unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16], uint16_t port  );
+	int unicast(const uint8_t* buf, uint32_t length, uint8_t ipaddress[16],
+			#ifdef SCOPE_ID
+				uint32_t scopeId,
+			#endif
+			uint16_t port  );
 	int multicast( const uint8_t* buf, uint32_t length );
-	int recv(uint8_t* buf, uint16_t len, bool nonblock, uint8_t ipaddress[16], uint16_t* port );
+	int recv(uint8_t* buf, uint16_t len, bool nonblock, uint8_t ipaddress[16],
+			#ifdef SCOPE_ID
+				uint32_t* scopeId,
+			#endif
+			uint16_t* port );
 	int recv(uint8_t* buf, uint16_t len, int flags);
 	bool checkRecvBuf();
 	bool isUnicast();
 
 private:
 	void close();
-	int recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16], uint16_t* port );
+	int recvfrom ( uint8_t* buf, uint16_t len, int flags, uint8_t ipaddress[16],
+			#ifdef SCOPE_ID
+				uint32_t* scopeId,
+			#endif
+			uint16_t* port );
 
 	int _sockfdUcast;
 	int _sockfdMcast;
@@ -173,6 +194,9 @@ private:
 
 	NWResponse _nlResp;
     uint8_t _gwIpAddress[16];
+	#ifdef SCOPE_ID
+		uint32_t _scopeId;
+	#endif
 	uint16_t _gwPortNo;
     int     _returnCode;
     bool _sleepflg;
