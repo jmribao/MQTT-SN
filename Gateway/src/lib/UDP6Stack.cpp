@@ -115,7 +115,9 @@ bool Network::getResponse(NWResponse* response){
 		response->setMsgType(msgType);
 		response->setClientAddress16(portNo);
 		response->setClientAddress128(ipAddress);
-		response->setClientScopeId(scopeId);
+		#ifdef SCOPE_ID
+			response->setClientScopeId(scopeId);
+		#endif
 		return true;
 	}
 }
